@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HydroSmart | Dashboard de Riego IoT</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #10b981;
+            --primary-glow: rgba(16, 185, 129, 0.4);
+            --bg-dark: #0f1520;
+            --panel-bg: #1e2532;
+            --accent-purple: #8b5cf6;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --glass-border: rgba(255, 255, 255, 0.05);
+            --accent3: #f59e0b;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        /* --- HEADER --- */
+        .header {
+            height: 65px;
+            padding: 0 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--glass-border);
+            background: #141b27;
+        }
+        .header-title { font-family: 'Outfit'; font-weight: 700; font-size: 1.25rem; display: flex; align-items: center; gap: 10px; }
+        .header-status { display: flex; gap: 15px; font-size: 12px; font-weight: 600; }
+        .status-pill { background: rgba(16, 185, 129, 0.1); color: var(--primary); padding: 6px 14px; border-radius: 50px; border: 1px solid var(--primary-glow); display: flex; align-items: center; gap: 8px; }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            position: fixed; left: 0; top: 65px; bottom: 0; width: 80px;
+            background: #141b27; border-right: 1px solid var(--glass-border);
+            display: flex; flex-direction: column; align-items: center; padding-top: 25px; z-index: 100;
+        }
+        .nav-item {
+            width: 48px; height: 48px; border-radius: 14px;
+            display: flex; justify-content: center; align-items: center;
+            margin-bottom: 20px; color: #64748b; transition: 0.3s; cursor: pointer; font-size: 20px;
+        }
+        .nav-item:hover { color: white; background: rgba(255,255,255,0.05); }
+        .nav-item.active { background: var(--primary) !important; color: white !important; box-shadow: 0 4px 15px var(--primary-glow); }
+        .nav-item.ia-btn i { color: #c4b5fd; }
+        .nav-item.ia-btn:hover { background: rgba(139,92,246,0.25); }
+
+        /* --- MAIN LAYOUT --- */
+        .content-area {
+            margin-left: 80px; margin-top: 0;
+            min-height: calc(100vh - 65px);
+            display: flex; flex-direction: column;
+            gap: 20px; padding: 25px;
+        }
+        .top-grid { display: grid; grid-template-columns: 320px 1fr 340px; gap: 20px; flex: 1; min-height: 420px; }
+        .bottom-grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; height: 260px; }
+
+        /* --- PANELS --- */
+        .glass-panel {
+            background: var(--panel-bg);
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            padding: 25px;
+            display: flex; flex-direction: column;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .panel-header { font-family: 'Outfit'; font-size: 0.95rem; margin-bottom: 25px; color: var(--primary); font-weight: 700; letter-spacing: 0.5px; display: flex; align-items: center; gap: 10px; }
+
+        /* TELEMETRIA IZQUIERDA */
+        .ring-container { position: relative; width: 150px; height: 150px; margin: 0 auto 25px; display: flex; justify-content: center; align-items: center; }
+        .stat-ring { transform: rotate(-90deg); }
+        .stat-val { position: absolute; font-size: 32px; font-weight: 700; font-family: 'Outfit'; }
+        
+        .mini-card { background: rgba(0,0,0,0.25); border-radius: 14px; padding: 14px 18px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.03); display: flex; align-items: center; gap: 16px; }
+        .mini-card i { width: 40px; height: 40px; border-radius: 12px; display: flex; justify-content: center; align-items: center; font-size: 18px; }
+
+        /* ESCENA 3D CENTRO */
+        .canvas-container { position: relative; border-radius: 20px; overflow: hidden; background: #111822; border: 1px solid var(--glass-border); box-shadow: inset 0 0 50px rgba(0,0,0,0.5); }
+        #canvas3d { width: 100%; height: 100%; outline: none; }
+        .day-label { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 50px; font-size: 12px; font-weight: 700; letter-spacing: 1px; font-family: 'Outfit'; border: 1px solid var(--glass-border); cursor: pointer; transition: 0.3s; z-index: 100; backdrop-filter: blur(5px); }
+        .day-label:hover { background: var(--primary-glow); border-color: var(--primary); transform: scale(1.02); }
+
+        /* CONTROL MAESTRO DERECHA */
+        .control-group { margin-bottom: 25px; }
+        .label-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-bottom: 12px; font-weight: 600; color: var(--text-dim); }
+        .range-slider { width: 100%; -webkit-appearance: none; appearance: none; height: 6px; background: rgba(255,255,255,0.1); border-radius: 5px; outline: none; margin: 10px 0; }
+        .range-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 22px; height: 22px; background: #fff; border-radius: 50%; cursor: pointer; border: 5px solid var(--primary); box-shadow: 0 0 10px var(--primary-glow); }
+        
+        .mode-toggles { display: flex; gap: 12px; margin-bottom: 25px; }
+        .mode-btn { flex: 1; padding: 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3); color: var(--text-dim); font-size: 12px; font-weight: 700; cursor: pointer; transition: 0.3s; }
+        .mode-btn.active { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); }
+
+        .big-action-btn { margin-top: auto; padding: 18px; border-radius: 14px; border: none; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; font-weight: 700; font-size: 15px; cursor: pointer; transition: 0.3s; display: flex; justify-content: center; align-items: center; gap: 10px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); letter-spacing: 0.5px; }
+        .big-action-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5); }
+        .big-action-btn.red { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); }
+        .big-action-btn.red:hover { box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5); }
+
+        .terminal { background: #0b0f17; border-radius: 16px; padding: 20px; font-family: 'monospace'; font-size: 12px; height: 100%; overflow-y: auto; border: 1px solid var(--glass-border); box-shadow: inset 0 5px 20px rgba(0,0,0,0.5); }
+        .log-line { margin-bottom: 8px; line-height: 1.5; color: #a3b8cc; }
+        .log-ts { color: #64748b; margin-right: 10px; }
+
+        /* MODAL IA */
+        #ia-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 2000; display: none; justify-content: center; align-items: center; }
+        .ia-box { background: #1e1b4b; border: 1px solid var(--accent-purple); border-radius: 24px; padding: 35px; max-width: 450px; width: 90%; text-align: center; }
+        .ia-box button { margin-top: 25px; padding: 12px 25px; border-radius: 50px; background: var(--accent-purple); color: white; border: none; cursor: pointer; font-weight: 600; }
+
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes pulse { from { transform: scale(1); opacity: 0.8; } to { transform: scale(1.2); opacity: 1; color: #fff; } }
+
+        /* --- RESPONSIVIDAD (MOBILE/TABLET) --- */
+        @media (max-width: 1200px) {
+            .top-grid { grid-template-columns: 300px 1fr; }
+            .bottom-grid { grid-template-columns: 1fr; height: auto; }
+            .terminal { height: 220px; }
+            .glass-panel:nth-child(3) { grid-column: span 2; } /* Mueve el control maestro abajo en tablet */
+        }
+        
+        @media (max-width: 900px) {
+            .header-status .status-pill:nth-child(2), .header-status .status-pill:nth-child(3) { display: none; }
+            .top-grid { grid-template-columns: 1fr; }
+            .glass-panel:nth-child(3) { grid-column: span 1; }
+            .canvas-container { min-height: 350px; }
+        }
+
+        @media (max-width: 768px) {
+            .content-area { margin-left: 0; padding: 15px; padding-bottom: 100px; gap: 15px; }
+            .sidebar {
+                top: auto; bottom: 0; left: 0; right: 0; width: 100%; height: 70px;
+                flex-direction: row; justify-content: space-around; padding: 0 15px; border-right: none; border-top: 1px solid var(--glass-border); padding-top: 0; align-items: center; background: rgba(20, 27, 39, 0.95); backdrop-filter: blur(15px);
+            }
+            .nav-item { margin-bottom: 0 !important; margin-top: 0 !important; width: auto; flex: 1; border-radius: 10px; height: 50px; }
+            .top-grid, .bottom-grid { gap: 15px; }
+            .glass-panel { padding: 20px; }
+            .header-title { font-size: 1.1rem; }
+            .header-title span { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div class="header-title">
+            <i class="fas fa-microchip" style="color:var(--primary);"></i>
+            Dashboard de Riego IoT <span style="color:var(--text-dim); font-weight:400; font-size:14px; margin-left:10px;">/ Riohacha-P1</span>
+        </div>
+        <div class="header-status">
+            <div class="status-pill"><div style="width:8px; height:8px; background:var(--primary); border-radius:50%; box-shadow:0 0 10px var(--primary);"></div> ESP32 ACTIVE</div>
+            <div class="status-pill" style="border-color:var(--glass-border); color:var(--text-dim);"><i class="fas fa-wifi"></i> 94% SIGNAL</div>
+            <div class="status-pill" style="border-color:var(--glass-border); color:var(--text-dim);"><i class="far fa-clock"></i> <span id="clock">14:23 PM</span></div>
+            <a href="entrega_firmware_modular.html" style="text-decoration:none;">
+                <div class="status-pill" style="background:rgba(139,92,246,0.2); border-color:rgba(139,92,246,0.6); color:#c4b5fd; cursor:pointer; transition:0.3s; box-shadow: 0 0 12px rgba(139,92,246,0.3);" onmouseover="this.style.background='rgba(139,92,246,0.35)'; this.style.boxShadow='0 0 20px rgba(139,92,246,0.5)'" onmouseout="this.style.background='rgba(139,92,246,0.2)'; this.style.boxShadow='0 0 12px rgba(139,92,246,0.3)'">
+                    <i class="fas fa-file-code"></i> ENTREGA FIRMWARE
+                </div>
+            </a>
+        </div>
+    </header>
+
+    <aside class="sidebar">
+        <div class="nav-item active"><i class="fas fa-th-large"></i></div>
+        <div class="nav-item ia-btn" onclick="showIA()" title="Agro-Asistente IA" style="background: rgba(139,92,246,0.25); border: 1px solid rgba(139,92,246,0.6);"><i class="fas fa-robot" style="color:#c4b5fd;"></i></div>
+        <div class="nav-item"><i class="fas fa-chart-line"></i></div>
+        <div class="nav-item"><i class="fas fa-cog"></i></div>
+        <div class="nav-item" style="margin-top: auto; background: rgba(139,92,246,0.2); border: 1px solid rgba(139,92,246,0.5);" onclick="window.location.href='entrega_firmware_modular.html'" title="Entrega Firmware"><i class="fas fa-file-code" style="color:#c4b5fd;"></i></div>
+    </aside>
+
+    <main class="content-area">
+        <div class="top-grid">
+            <!-- TELEMETRÍA IZQUIERDA -->
+            <section class="glass-panel">
+                <div class="panel-header"><i class="fas fa-satellite-dish"></i> Telemetría</div>
+                
+                <div class="ring-container">
+                    <svg width="140" height="140" class="stat-ring">
+                        <circle cx="70" cy="70" r="60" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="12"></circle>
+                        <circle id="soil-ring" cx="70" cy="70" r="60" fill="none" stroke="var(--primary)" stroke-width="12" stroke-dasharray="376.8" stroke-dashoffset="100"></circle>
+                    </svg>
+                    <div class="stat-val" id="s-val-large">87%</div>
+                </div>
+                <div style="text-align:center; font-size:10px; color:var(--text-dim); margin-bottom:25px; letter-spacing:1px;">HUMEDAD DEL SUSTRATO</div>
+
+                <div class="mini-card">
+                    <i class="fas fa-thermometer-half" style="background:#f59e0b1a; color:#f59e0b;"></i>
+                    <div style="flex:1;">
+                        <div style="font-size:10px; color:var(--text-dim);">TEMPERATURA</div>
+                        <div style="font-size:18px; font-weight:700; font-family:'Outfit';" id="t-val">24.5°C</div>
+                    </div>
+                </div>
+
+                <div class="mini-card">
+                    <i class="fas fa-tint" style="background:#6366f11a; color:#6366f1;"></i>
+                    <div style="flex:1;">
+                        <div style="font-size:10px; color:var(--text-dim);">HUM. AMBIENTE</div>
+                        <div style="font-size:18px; font-weight:700; font-family:'Outfit';" id="h-val">60%</div>
+                    </div>
+                </div>
+
+                <div class="mini-card" style="margin-top:auto; background:rgba(0,0,0,0.2);">
+                    <i class="fas fa-faucet" style="color:#ef4444; opacity:0.8;"></i>
+                    <div style="flex:1;">
+                        <div style="font-size:10px; color:var(--text-dim);">ESTADO BOMBA</div>
+                        <div style="font-size:18px; font-weight:700; color:#ef4444;" id="p-txt">APAGADA</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3D CENTRAL -->
+            <section class="canvas-container">
+                <div id="canvas3d"></div>
+                <div class="day-label" id="day-txt" onclick="skipDay()">☀️ DÍA 1 / ETAPA SEMILLA</div>
+                <div style="position:absolute; bottom:20px; left:20px; font-size:10px; color:var(--text-dim); display:flex; gap:15px; opacity:0.6;">
+                    <span><i class="fas fa-video"></i> 1080p LIVE STREAM</span>
+                    <span>SECURE_CONN_HASH: 0x82...f4a</span>
+                </div>
+            </section>
+
+            <!-- CONTROL MAESTRO DERECHA -->
+            <section class="glass-panel">
+                <div class="panel-header"><i class="fas fa-sliders-h"></i> Control Maestro</div>
+                
+                <div class="control-group">
+                    <div class="label-row"><span>UMBRAL DE RIEGO (SECO)</span> <span style="color:var(--primary);" id="u-r-val">30%</span></div>
+                    <input type="range" class="range-slider" id="u-r-slider" value="30" oninput="updateUmbral('r')">
+                </div>
+
+                <div class="control-group">
+                    <div class="label-row"><span>UMBRAL DE PARO (HÚMEDO)</span> <span style="color:var(--primary);" id="u-p-val">70%</span></div>
+                    <input type="range" class="range-slider" id="u-p-slider" value="70" oninput="updateUmbral('p')">
+                </div>
+
+                <div class="control-group">
+                    <div class="label-row"><span>MODO DE OPERACIÓN</span></div>
+                    <div class="mode-toggles">
+                        <button class="mode-btn active" id="btn-auto" onclick="setMode('AUTO')">AUTOMÁTICO</button>
+                        <button class="mode-btn" id="btn-manual" onclick="setMode('MANUAL')">MANUAL</button>
+                    </div>
+                </div>
+
+                <div class="control-group" style="margin-top:-10px;">
+                    <div class="label-row">
+                        <span>FUENTE DE DATOS</span> 
+                        <span style="color:var(--accent3);" id="ip-status">MODO DEMO</span>
+                    </div>
+                    <div class="mode-toggles" style="margin-bottom:10px;">
+                        <button class="mode-btn active" id="btn-demo" onclick="desconectarESP()">SIMULADOR (DEMO)</button>
+                        <button class="mode-btn" id="btn-real" onclick="showIPInput()">DISPOSITIVO REAL</button>
+                    </div>
+                    <div id="ip-panel" style="display:none; gap:10px; align-items:center; opacity:0; transition:0.3s;">
+                        <input type="text" id="ip-input" class="range-slider" style="flex:1; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); padding:8px 12px; height:auto; color:white; font-family:'monospace';" placeholder="Local IP (Ej: 192.168.1.50)" value="">
+                        <button onclick="conectarESP()" style="background:linear-gradient(135deg, #10b981 0%, #059669 100%); color:white; border:none; padding:9px 15px; border-radius:8px; cursor:pointer; font-weight:700; font-size:11px; box-shadow:0 4px 10px rgba(16,185,129,0.3);">CONECTAR</button>
+                    </div>
+                </div>
+
+                <div style="font-size:10px; color:var(--text-dim); line-height:1.4; background:rgba(255,255,255,0.03); padding:10px; border-radius:10px; margin-bottom:15px;">
+                    <i class="fas fa-info-circle" style="color:var(--primary); margin-right:5px;"></i>
+                    En modo <b id="info-mode">AUTOMÁTICO</b>, el ESP32 activará la bomba por 10s si la humedad baja del <span id="info-threshold">30%</span>.
+                </div>
+
+                <button class="big-action-btn" id="p-btn"><i class="fas fa-play"></i> FORZAR RIEGO AHORA</button>
+            </section>
+        </div>
+
+        <!-- ANALÍTICA ABAJO -->
+        <div class="bottom-grid">
+            <section class="glass-panel" style="padding:15px;">
+                <div style="font-size:10px; color:var(--text-dim); margin-bottom:10px;"><i class="fas fa-chart-area" style="color:var(--primary);"></i> ANALYTICS - HISTÓRICO 7 DÍAS</div>
+                <div style="height:100%;"><canvas id="mainChart"></canvas></div>
+            </section>
+            <section class="terminal" id="term">
+                <div style="color:rgba(255,255,255,0.3); margin-bottom:10px; font-size:9px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:5px;">--- SYSTEM LOG TERMINAL READY ---</div>
+            </section>
+        </div>
+
+        <div id="ia-modal">
+            <div class="ia-box">
+                <i class="fas fa-sparkles" style="font-size: 40px; color: var(--accent-purple); margin-bottom: 20px;"></i>
+                <h2 style="font-family: 'Outfit'; margin-bottom: 15px;">Diagnóstico de Agro-Asistente</h2>
+                <div id="ia-txt" style="color: var(--text-dim); line-height: 1.6; border-top: 1px solid var(--glass-border); padding-top: 15px;"></div>
+                <button onclick="document.getElementById('ia-modal').style.display='none'">CERRAR ASISTENTE</button>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <script>
+        const state = { temp: 20.1, hum: 60, soil: 87, pump: false, day: 1, dayTime: 0, mode: 'AUTO' };
+        const container = document.getElementById('canvas3d');
+        let scene, camera, renderer, controls, plantGroup, waterSystem;
+
+        function init3D() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(12, 10, 15);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            container.appendChild(renderer.domElement);
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.target.set(0, 4, 0);
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+            const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+            sun.position.set(10, 20, 10);
+            sun.castShadow = true;
+            scene.add(sun);
+
+            createScene(); animate();
+        }
+
+        function createScene() {
+            // Maceta
+            const pot = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 2.8, 5, 64), new THREE.MeshStandardMaterial({color: 0x334155, metalness:0.8, roughness:0.2}));
+            pot.position.y = 2.5; pot.castShadow = pot.receiveShadow = true;
+            scene.add(pot);
+
+            // Tierra
+            const soilMesh = new THREE.Mesh(new THREE.CylinderGeometry(3.3, 3.3, 0.6, 64), new THREE.MeshStandardMaterial({color: 0x271910}));
+            soilMesh.position.y = 5; scene.add(soilMesh);
+
+            // PLANTA CON FLOR
+            plantGroup = new THREE.Group();
+            const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 6, 16), new THREE.MeshStandardMaterial({color:0x059669}));
+            stem.position.y = 3; plantGroup.add(stem);
+
+            const leafMat = new THREE.MeshStandardMaterial({color:0x10b981, roughness:0.5});
+            for(let i=0; i<4; i++) {
+                const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.8, 12, 12), leafMat);
+                leaf.scale.set(1, 0.2, 0.6);
+                leaf.position.y = 2+i; leaf.rotation.y = (Math.PI/2)*i; leaf.rotation.z = 0.6;
+                plantGroup.add(leaf);
+            }
+
+            const flower = new THREE.Group();
+            flower.name = "flower";
+            flower.add(new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 16), new THREE.MeshStandardMaterial({color:0xf59e0b})));
+            for(let i=0; i<6; i++) {
+                const p = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 12), new THREE.MeshStandardMaterial({color:0xef4444}));
+                p.scale.set(1.2, 0.1, 0.8);
+                p.position.set(Math.cos(i*1.04)*0.7, 0, Math.sin(i*1.04)*0.7);
+                flower.add(p);
+            }
+            flower.position.y = 6; flower.visible = false;
+            plantGroup.add(flower);
+
+            plantGroup.position.set(0, 5, 0); scene.add(plantGroup);
+
+            // HARDWARE
+            const esp = new THREE.Group();
+            esp.add(new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.2, 1.8), new THREE.MeshStandardMaterial({color:0x1e293b})));
+            esp.position.set(6, -1.8, 0); scene.add(esp);
+
+            const hose = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(6,-1.6,0), new THREE.Vector3(7,4,0), new THREE.Vector3(0,7.8,0)]), 64, 0.12, 12), new THREE.MeshStandardMaterial({color:0x475569}));
+            scene.add(hose);
+
+            // SENSOR DE HUMEDAD EN LA MACETA
+            const sensorGroup = new THREE.Group();
+            const pcb = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2, 0.1), new THREE.MeshStandardMaterial({color: 0x1a1a1a})); // PCB Negra
+            const tips = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 0.05), new THREE.MeshStandardMaterial({color: 0x94a3b8, metalness: 0.9})); // Puntas metálicas
+            tips.position.y = -1;
+            sensorGroup.add(pcb, tips);
+            sensorGroup.position.set(2, 5.2, 0); // Enterrado en el sustrato
+            sensorGroup.rotation.x = 0.2;
+            scene.add(sensorGroup);
+
+            // Cable del sensor al ESP32
+            const cablePoints = [new THREE.Vector3(2, 6, 0), new THREE.Vector3(4, 3, 0), new THREE.Vector3(6, -1.6, 0)];
+            const cable = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(cablePoints), 32, 0.04, 8), new THREE.MeshStandardMaterial({color: 0x222222}));
+            scene.add(cable);
+
+            // AGUA
+            const geo = new THREE.BufferGeometry();
+            const pos = new Float32Array(400*3);
+            for(let i=0; i<400; i++){ pos[i*3]=0; pos[i*3+1]=7.8; pos[i*3+2]=0; }
+            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            waterSystem = new THREE.Points(geo, new THREE.PointsMaterial({color:0x60A5FA, size:0.1, transparent:true}));
+            waterSystem.visible = false; scene.add(waterSystem);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if(state.pump) {
+                waterSystem.visible = true;
+                const p = waterSystem.geometry.attributes.position.array;
+                for(let i=0; i<400; i++) { p[i*3+1]-=0.15; if(p[i*3+1]<5.2) p[i*3+1]=7.8; }
+                waterSystem.geometry.attributes.position.needsUpdate = true;
+            } else { waterSystem.visible = false; }
+
+            const s = 0.2 + (state.day/7)*1.3;
+            plantGroup.scale.lerp(new THREE.Vector3(s,s,s), 0.05);
+            plantGroup.getObjectByName("flower").visible = state.day >= 5;
+            renderer.render(scene, camera);
+        }
+
+        const chart = new Chart(document.getElementById('mainChart').getContext('2d'), {
+            type: 'line',
+            data: { labels: Array(30).fill(''), datasets: [{ label: 'HUMEDAD %', data: Array(30).fill(87), borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.15)', fill: true, tension: 0.4 }] },
+            options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 30, max: 100, grid:{color:'rgba(255,255,255,0.05)'} } } }
+        });
+
+        async function updateSim() {
+            state.dayTime += 0.15;
+            if(state.dayTime >= 100) {
+                state.dayTime = 0; state.day = state.day >= 7 ? 1 : state.day + 1;
+                document.getElementById('day-txt').textContent = `☀️ DÍA ${state.day} / ETAPA ${["SEMILLA","BROTE","CRECIMIENTO","ESTABLE","PRE-FLOR","FLOR","MADUREZ"][state.day-1]}`;
+            }
+
+            if (window.isRealMode && window.espIP) {
+                // MODO REAL: Solicitar datos al ESP32 físico
+                try {
+                    // Timeout para no bloquear la app si el ESP se desconecta
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 1500);
+                    
+                    const res = await fetch(`http://${window.espIP}/api/data`, { signal: controller.signal });
+                    clearTimeout(timeoutId);
+                    
+                    if (res.ok) {
+                        const data = await res.json();
+                        state.temp = data.temperatura;
+                        state.hum = data.humedad_ambiente;
+                        state.soil = data.humedad_suelo;
+                        if (data.bomba !== undefined && state.mode !== 'MANUAL') {
+                            setPumpUI(data.bomba);
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Fallo lectura ESP32", e);
+                }
+            } else if (window.isDemoMode === false) {
+                // MODO REAL, pero sin conexión: Mostrar TODO en cero
+                state.soil = 0;
+                state.temp = 0;
+                state.hum = 0;
+            } else {
+                // MODO DEMO: Simulación dinámica de sensores
+                if(state.pump) {
+                    state.soil += 0.45;
+                    state.temp -= 0.02; // El riego enfría ligeramente
+                    state.hum += 0.05;  // Sube la humedad relativa
+                } else {
+                    state.soil -= 0.12;
+                    state.temp += (Math.random() - 0.48) * 0.15; // Fluctuación natural
+                    state.hum += (Math.random() - 0.5) * 0.4;     // Fluctuación natural
+                }
+
+                // LÓGICA DE CONTROL AUTÓNOMO EN SIMULADOR
+                if(state.mode === 'AUTO') {
+                    const uRiego = parseInt(document.getElementById('u-r-slider').value);
+                    const uParo = parseInt(document.getElementById('u-p-slider').value);
+
+                    if(state.soil <= uRiego && !state.pump) {
+                        togglePump(true, "AUTO");
+                    } else if(state.soil >= uParo && state.pump) {
+                        togglePump(false, "AUTO");
+                    }
+                }
+            }
+
+            // Límites visuales (saltar si estamos en ceros intencionados)
+            if (window.isDemoMode !== false || window.isRealMode) {
+                state.soil = Math.min(Math.max(state.soil, 0), 100);
+                state.temp = Math.min(Math.max(state.temp, 0), 45); // permitimos bajar a 0
+                state.hum = Math.min(Math.max(state.hum, 0), 100);
+            }
+            
+            document.getElementById('t-val').textContent = (window.isDemoMode === false && !window.isRealMode) ? '---' : state.temp.toFixed(1) + '°C';
+            document.getElementById('h-val').textContent = (window.isDemoMode === false && !window.isRealMode) ? '---' : Math.round(state.hum) + '%';
+            document.getElementById('s-val-large').textContent = Math.round(state.soil) + '%';
+            
+            const ring = document.getElementById('soil-ring');
+            ring.style.strokeDashoffset = 376.8 - (376.8 * state.soil / 100);
+
+            chart.data.datasets[0].data.shift(); 
+            chart.data.datasets[0].data.push(state.soil); 
+            chart.update('none');
+        }
+
+        async function togglePump(status, source) {
+            if (state.pump === status) return;
+
+            // Si estamos en modo físico ESP32
+            if (window.isRealMode && window.espIP) {
+                try {
+                    const res = await fetch(`http://${window.espIP}/api/toggle`, { method: 'POST' });
+                    if (res.ok) {
+                        const data = await res.json();
+                        setPumpUI(data.bomba);
+                        addLog(`${source === "AUTO" ? "🤖 IA" : "👤 MANUAL"} LAN (ESP32): Bomba enviada. Respuesta: ${data.bomba ? 'ON':'OFF'}`);
+                    }
+                } catch(e) {
+                    addLog("⚠️ ERROR: No se pudo contactar el ESP32 para cambiar el estado de la bomba.");
+                }
+            } else {
+                // MODO DEMO
+                setPumpUI(status);
+                addLog(`${source === "AUTO" ? "🤖 IA" : "👤 MANUAL"}: Bomba ${state.pump ? 'ACTIVADA' : 'APAGADA'}`);
+            }
+        }
+
+        function setPumpUI(status) {
+            state.pump = status;
+            const btn = document.getElementById('p-btn');
+            
+            if (state.pump) {
+                btn.innerHTML = '<i class="fas fa-stop"></i> DETENER RIEGO';
+                btn.className = 'big-action-btn red';
+                document.getElementById('p-txt').textContent = 'EN OPERACIÓN';
+                document.getElementById('p-txt').style.color = '#ef4444';
+            } else {
+                btn.innerHTML = '<i class="fas fa-play"></i> FORZAR RIEGO AHORA';
+                btn.className = 'big-action-btn';
+                document.getElementById('p-txt').textContent = 'APAGADA';
+                document.getElementById('p-txt').style.color = 'var(--text-dim)';
+            }
+        }
+
+
+        document.getElementById('p-btn').onclick = () => {
+            togglePump(!state.pump, "MANUAL");
+        };
+
+        function addLog(msg) {
+            const l = document.createElement('div');
+            l.className = 'log-line';
+            l.innerHTML = `<span class="log-ts">[${new Date().toLocaleTimeString('es-ES', {hour12:false})}]</span> ${msg}`;
+            const t = document.getElementById('term');
+            t.appendChild(l);
+            t.scrollTop = t.scrollHeight;
+        }
+
+        function skipDay() {
+            state.dayTime = 99; // Forzamos el salto al siguiente día en el siguiente pulso de updateSim
+            addLog("⏩ SALTO DE TIEMPO: Avanzando al siguiente día de crecimiento...");
+        }
+
+        function updateUmbral(type) {
+            const val = type === 'r' ? document.getElementById('u-r-slider').value : document.getElementById('u-p-slider').value;
+            document.getElementById(`u-${type}-val`).textContent = val + '%';
+            if(type === 'r') {
+                document.getElementById('info-threshold').textContent = val + '%';
+                addLog(`⚙️ CONFIG: Umbral de riego ajustado a ${val}%`);
+            } else {
+                addLog(`⚙️ CONFIG: Umbral de paro ajustado a ${val}%`);
+            }
+        }
+
+        function setMode(mode) {
+            state.mode = mode;
+            const auto = document.getElementById('btn-auto');
+            const manual = document.getElementById('btn-manual');
+            if(mode === 'AUTO') {
+                auto.className = 'mode-btn active'; manual.className = 'mode-btn';
+                document.getElementById('info-mode').textContent = 'AUTOMÁTICO';
+            } else {
+                auto.className = 'mode-btn'; manual.className = 'mode-btn active';
+                document.getElementById('info-mode').textContent = 'MANUAL';
+            }
+            addLog(`🔄 MODO: Cambiado a modo ${mode}`);
+        }
+
+        window.isDemoMode = true;
+
+        function showIPInput() {
+            window.isDemoMode = false; // Detenemos la simulación para que valores caigan a 0
+            
+            document.getElementById('btn-demo').classList.remove('active');
+            document.getElementById('btn-real').classList.add('active');
+            
+            const panel = document.getElementById('ip-panel');
+            panel.style.display = 'flex';
+            setTimeout(() => panel.style.opacity = '1', 50);
+            
+            if(!window.isRealMode) {
+                document.getElementById('ip-status').textContent = "ESPERANDO IP...";
+                document.getElementById('ip-status').style.color = "var(--text-dim)";
+                addLog("⚠️ SISTEMA: Modo Real seleccionado. Esperando IP para recibir telemetría.");
+            }
+        }
+
+        async function conectarESP() {
+            const ip = document.getElementById('ip-input').value.trim();
+            if (!ip) { addLog("⚠️ ERROR: Por favor ingresa una IP (ej: 192.168.1.50)"); return; }
+            
+            document.getElementById('ip-status').textContent = "CONECTANDO...";
+            document.getElementById('ip-status').style.color = "var(--primary)";
+            addLog(`🌐 RED: Intentando contactar ESP32 en http://${ip}/api/data...`);
+            
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000);
+                const res = await fetch(`http://${ip}/api/data`, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                
+                if (res.ok) {
+                    window.espIP = ip;
+                    window.isRealMode = true;
+                    document.getElementById('ip-status').textContent = "MODO REAL ON";
+                    document.getElementById('ip-status').style.color = "var(--primary)";
+                    addLog(`✅ ÉXITO: Dashboard ahora controla el ESP32 Físico en [${ip}]`);
+                } else {
+                    throw new Error("HTTP Status no OK");
+                }
+            } catch (error) {
+                document.getElementById('ip-status').textContent = "FALLÓ CONEXIÓN";
+                document.getElementById('ip-status').style.color = "#ef4444";
+                addLog(`❌ RED: No se pudo conectar a ${ip}. Verifica que el ESP32 esté en la misma red WiFi.`);
+            }
+        }
+
+        function desconectarESP() {
+            window.isDemoMode = true; // Volvemos a la simulación
+            window.isRealMode = false;
+            window.espIP = null;
+            document.getElementById('ip-status').textContent = "MODO DEMO";
+            document.getElementById('ip-status').style.color = "var(--accent3)";
+            
+            document.getElementById('btn-real').classList.remove('active');
+            document.getElementById('btn-demo').classList.add('active');
+            
+            const panel = document.getElementById('ip-panel');
+            panel.style.opacity = '0';
+            setTimeout(() => panel.style.display = 'none', 300);
+            
+            addLog(`🔄 MODO: Conexión física terminada. Volviendo al Simulador Autónomo.`);
+        }
+
+
+        // --- AGRO-ASISTENTE IA ---
+        function typeWriter(element, html, speed = 15) {
+            let i = 0;
+            element.innerHTML = "";
+            element.style.textAlign = "left";
+            element.style.fontSize = "13px";
+            
+            function type() {
+                if (i < html.length) {
+                    if (html.substring(i, i + 1) === '<') {
+                        let tagEnd = html.indexOf('>', i);
+                        element.innerHTML += html.substring(i, tagEnd + 1);
+                        i = tagEnd + 1;
+                    } else {
+                        element.innerHTML += html.charAt(i);
+                        i++;
+                    }
+                    setTimeout(type, speed);
+                }
+            }
+            type();
+        }
+
+        async function showIA() {
+            const modal = document.getElementById('ia-modal');
+            const txt = document.getElementById('ia-txt');
+            const icon = modal.querySelector('.fa-robot') || modal.querySelector('.fa-sparkles');
+            
+            modal.style.display = 'flex';
+            txt.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; gap:10px; margin:20px 0;">
+                                <div class="spinner" style="width:30px; height:30px; border:3px solid rgba(139,92,246,0.2); border-top-color:var(--accent-purple); border-radius:50%; animation:spin 1s linear infinite;"></div>
+                                <span style="font-size:11px; letter-spacing:2px; color:var(--accent-purple); font-weight:700;">ACCEDIENDO A RED SENSORIAL...</span>
+                             </div>`;
+            
+            if (icon) icon.style.animation = "pulse 1s infinite alternate";
+            addLog("🤖 IA: Iniciando escaneo de telemetría...");
+
+            // Simular pensamiento profundo
+            await new Promise(r => setTimeout(r, 1800));
+
+            const stages = ["SEMILLA","BROTE","CRECIMIENTO","ESTABLE","PRE-FLOR","FLOR","MADUREZ"];
+            const h = Math.round(state.soil);
+            let diagnostico = "";
+            
+            if (h < 30) {
+                diagnostico = `<h3 style="color:#ef4444; font-family:'Outfit'; margin-bottom:12px;">🚨 Alerta Crítica detectada</h3>
+                               He detectado que el índice de humedad en el sustrato ha caído al <b>${h}%</b>. Bajo las condiciones actuales de <b>${state.temp.toFixed(1)}°C</b>, la presión osmótica es insuficiente.<br><br>
+                               <span style="color:#f87171;"><b>Recomendación:</b> Iniciando micro-irrigación de emergencia para evitar plasmólisis en etapa de ${stages[state.day-1]}.</span>`;
+            } else if (h > 80) {
+                diagnostico = `<h3 style="color:#10b981; font-family:'Outfit'; margin-bottom:12px;">🌿 Estado: Saturación Ideal</h3>
+                               Sistema en equilibrio térmico. La humedad de <b>${h}%</b> garantiza una transpiración eficiente. Los niveles de lixiviación son mínimos.<br><br>
+                               <span style="color:#34d399;"><b>Estado:</b> No se requiere intervención. La planta se encuentra en zona de confort biológico.</span>`;
+            } else {
+                diagnostico = `<h3 style="color:#8b5cf6; font-family:'Outfit'; margin-bottom:12px;">🧠 Optimización en Curso</h3>
+                               Los sensores reportan <b>${h}% de humedad</b> y <b>${state.temp.toFixed(1)}°C</b>. El intercambio gaseoso en los estomas es óptimo para la etapa de ${stages[state.day-1]}.<br><br>
+                               <span style="color:#a78bfa;"><b>Analítica:</b> Los algoritmos predictivos indican estabilidad por las próximas 12 horas.</span>`;
+            }
+
+            if (state.temp > 28) {
+                diagnostico += `<div style="margin-top:20px; padding:10px; background:rgba(245,158,11,0.1); border-left:3px solid #f59e0b; font-size:11px;">
+                                🌡️ <b>ADVERTENCIA TÉRMICA:</b> El estrés por calor podría afectar el crecimiento. Monitoreando ventilación.</div>`;
+            }
+
+            if (icon) icon.style.animation = "none";
+            typeWriter(txt, diagnostico);
+            addLog("🤖 IA: Diagnóstico completado exitosamente.");
+        }
+
+        window.onload = () => { init3D(); setInterval(updateSim, 100); };
+    </script>
+</body>
+</html>

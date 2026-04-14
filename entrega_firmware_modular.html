@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Entrega: Firmware Modular IoT - Sistema de Riego</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+    <style>
+        :root {
+            --bg: #0d1117;
+            --bg2: #161b22;
+            --bg3: #1f2937;
+            --border: #30363d;
+            --accent: #22d3ee;
+            --accent2: #10b981;
+            --accent3: #f59e0b;
+            --accent4: #8b5cf6;
+            --text: #e6edf3;
+            --text-muted: #8b949e;
+            --red: #f87171;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+        }
+
+        /* ── HEADER ── */
+        header {
+            background: linear-gradient(135deg, #0a1628 0%, #0d2040 50%, #0a1628 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 3rem 2rem 2.5rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        header::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(34,211,238,.15), transparent);
+        }
+        .badge {
+            display: inline-block;
+            background: rgba(34,211,238,.1);
+            border: 1px solid rgba(34,211,238,.3);
+            color: var(--accent);
+            padding: .35rem 1rem;
+            border-radius: 999px;
+            font-size: .8rem;
+            font-weight: 600;
+            letter-spacing: .05em;
+            text-transform: uppercase;
+            margin-bottom: 1.2rem;
+        }
+        header h1 {
+            font-size: clamp(1.8rem, 4vw, 2.8rem);
+            font-weight: 800;
+            background: linear-gradient(135deg, #e6edf3, var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: .5rem;
+        }
+        header p {
+            color: var(--text-muted);
+            font-size: .95rem;
+        }
+        .meta-row {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-top: 1.5rem;
+        }
+        .meta-item {
+            font-size: .82rem;
+            color: var(--text-muted);
+        }
+        .meta-item span { color: var(--text); font-weight: 600; }
+
+        /* ── LAYOUT ── */
+        main { max-width: 960px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+
+        /* ── STEP CARDS ── */
+        .step {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            margin-bottom: 2rem;
+            overflow: hidden;
+            transition: border-color .3s;
+        }
+        .step:hover { border-color: var(--accent); }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.2rem 1.6rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .step-num {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            display: grid; place-items: center;
+            font-weight: 800;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+        .s1 .step-num { background: rgba(34,211,238,.15); color: var(--accent); border: 1.5px solid var(--accent); }
+        .s2 .step-num { background: rgba(16,185,129,.15); color: var(--accent2); border: 1.5px solid var(--accent2); }
+        .s3 .step-num { background: rgba(245,158,11,.15); color: var(--accent3); border: 1.5px solid var(--accent3); }
+        .s4 .step-num { background: rgba(139,92,246,.15); color: var(--accent4); border: 1.5px solid var(--accent4); }
+        .s5 .step-num { background: rgba(248,113,113,.15); color: var(--red); border: 1.5px solid var(--red); }
+
+        .step-title { font-size: 1.15rem; font-weight: 700; }
+
+        .step-body { padding: 1.6rem; }
+
+        /* ── TABLE ── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .9rem;
+        }
+        th {
+            background: var(--bg3);
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: .72rem;
+            letter-spacing: .06em;
+            padding: .7rem 1rem;
+            text-align: left;
+        }
+        td { padding: .75rem 1rem; border-top: 1px solid var(--border); vertical-align: top; }
+        tr:hover td { background: rgba(255,255,255,.02); }
+        .td-label { color: var(--text-muted); font-weight: 500; white-space: nowrap; }
+        .highlight { color: var(--accent); font-weight: 600; }
+        .highlight2 { color: var(--accent2); font-weight: 600; }
+
+        /* ── RESPONSIBILITY GRID ── */
+        .resp-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 1rem;
+        }
+        .resp-card {
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem 1.2rem;
+        }
+        .resp-card .func {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .85rem;
+            padding: .2rem .6rem;
+            border-radius: 6px;
+            display: inline-block;
+            margin-bottom: .6rem;
+            font-weight: 700;
+        }
+        .c1 .func { background: rgba(34,211,238,.12); color: var(--accent); }
+        .c2 .func { background: rgba(16,185,129,.12); color: var(--accent2); }
+        .c3 .func { background: rgba(245,158,11,.12); color: var(--accent3); }
+        .c4 .func { background: rgba(139,92,246,.12); color: var(--accent4); }
+        .c5 .func { background: rgba(248,113,113,.12); color: var(--red); }
+        .resp-card p { font-size: .88rem; color: var(--text-muted); }
+
+        /* ── ARCHITECTURE DIAGRAM ── */
+        .arch {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: .5rem;
+            padding: 1rem 0;
+        }
+        .arch-box {
+            width: 100%;
+            max-width: 500px;
+            border-radius: 10px;
+            padding: .8rem 1.2rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: .9rem;
+            position: relative;
+        }
+        .arch-arrow {
+            color: var(--text-muted);
+            font-size: 1.4rem;
+            line-height: 1;
+        }
+        .ab1 { background: rgba(34,211,238,.1); border: 1px solid rgba(34,211,238,.35); color: var(--accent); }
+        .ab2 { background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.35); color: var(--accent2); }
+        .ab3 { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.35); color: var(--accent3); }
+        .ab4 { background: rgba(139,92,246,.1); border: 1px solid rgba(139,92,246,.35); color: var(--accent4); }
+        .ab5 { background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.35); color: var(--red); }
+        .ab-sub { font-size: .76rem; color: var(--text-muted); font-weight: 400; margin-top: .2rem; }
+
+        /* ── CODE BLOCK ── */
+        pre {
+            background: #010409;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1.2rem 1.4rem;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .8rem;
+            line-height: 1.6;
+            margin: 1rem 0;
+        }
+        .kw   { color: #ff7b72; }
+        .func-name { color: #d2a8ff; }
+        .str  { color: #a5d6ff; }
+        .num  { color: #79c0ff; }
+        .cmt  { color: #8b949e; font-style: italic; }
+        .type { color: #ffa657; }
+
+        /* ── DEMO BOX ── */
+        .demo-box {
+            background: #010409;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem 1.4rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .82rem;
+            line-height: 2;
+        }
+        .demo-box .ok    { color: var(--accent2); }
+        .demo-box .info  { color: var(--accent); }
+        .demo-box .warn  { color: var(--accent3); }
+        .demo-box .json  { color: #e6edf3; }
+
+        /* ── LOGIC TABLE ── */
+        .func-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+        .func-table th {
+            background: var(--bg3);
+            padding: .65rem 1rem;
+            text-align: left;
+            font-size: .72rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: .05em;
+        }
+        .func-table td {
+            padding: .85rem 1rem;
+            border-top: 1px solid var(--border);
+            vertical-align: top;
+        }
+        .func-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .8rem;
+            padding: .2rem .55rem;
+            border-radius: 5px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        /* ── INFO CALLOUT ── */
+        .callout {
+            display: flex;
+            gap: .8rem;
+            background: rgba(34,211,238,.07);
+            border: 1px solid rgba(34,211,238,.25);
+            border-radius: 10px;
+            padding: 1rem 1.2rem;
+            margin-top: 1.2rem;
+            font-size: .88rem;
+        }
+        .callout .icon { font-size: 1.2rem; flex-shrink: 0; }
+
+        .back-btn {
+            position: fixed;
+            top: 1.1rem;
+            left: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: .55rem;
+            background: rgba(16,185,129,.1);
+            border: 1px solid rgba(16,185,129,.35);
+            color: #10b981;
+            padding: .45rem 1rem;
+            border-radius: 999px;
+            font-size: .82rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background .25s, transform .2s;
+            z-index: 999;
+        }
+        .back-btn:hover {
+            background: rgba(16,185,129,.2);
+            transform: translateX(-3px);
+        }
+        .back-btn svg { width: 14px; height: 14px; }
+        footer {
+            text-align: center;
+            padding: 2rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: .82rem;
+        }
+    </style>
+</head>
+<body>
+
+<a href="index.html" class="back-btn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5M12 5l-7 7 7 7"/>
+    </svg>
+    Volver al Dashboard
+</a>
+
+<header>
+    <div class="badge">ISBMC · Programación en Proyectos IoT · G2 · 2026</div>
+    <h1>Firmware Modular ESP32<br/>Sistema de Riego Hidropónico</h1>
+    <p>Construcción inicial del firmware modular del proyecto IoT</p>
+    <div class="meta-row">
+        <div class="meta-item">Materia: <span>Programación en Proyectos IoT</span></div>
+        <div class="meta-item">Plataforma: <span>ESP32 / Wokwi</span></div>
+        <div class="meta-item">Fecha: <span>Abril 2026</span></div>
+    </div>
+</header>
+
+<main>
+
+    <!-- ── PASO 1 ── -->
+    <section class="step s1">
+        <div class="step-header">
+            <div class="step-num">1</div>
+            <h2 class="step-title">Definición del Proyecto</h2>
+        </div>
+        <div class="step-body">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Campo</th>
+                        <th>Descripción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="td-label">Nombre del proyecto</td>
+                        <td class="highlight">Sistema de Riego Hidropónico Inteligente</td>
+                    </tr>
+                    <tr>
+                        <td class="td-label">Problema que resuelve</td>
+                        <td>La falta de control automático sobre la humedad del cultivo hidropónico genera desperdicio de agua y riesgo de pérdida de plantas. El sistema monitorea continuamente y actúa sin intervención humana.</td>
+                    </tr>
+                    <tr>
+                        <td class="td-label">Sensores utilizados</td>
+                        <td>
+                            <strong>DHT22</strong> — Temperatura y humedad ambiental (Pin 4)<br/>
+                            <strong>Sensor capacitivo de humedad del suelo</strong> — Porcentaje de humedad del sustrato (Pin 35)
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="td-label">Actuador utilizado</td>
+                        <td><strong>Bomba de agua</strong> — Controlada digitalmente vía transistor/relé (Pin 13). Activa/desactiva el riego según los umbrales definidos.</td>
+                    </tr>
+                    <tr>
+                        <td class="td-label">Dato que envía a internet</td>
+                        <td>Temperatura, humedad ambiental, porcentaje de humedad del suelo y estado de la bomba, publicados en formato <span class="highlight">JSON</span> por Serial y visualizados en servidor web embebido.</td>
+                    </tr>
+                    <tr>
+                        <td class="td-label">Acción remota que permite</td>
+                        <td class="highlight2">Encender o apagar la bomba de agua remotamente desde un navegador web (ruta <code>/toggle</code>) o enviando el comando <code>REGAR_ON</code> / <code>REGAR_OFF</code> por Serial.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ── PASO 2 ── -->
+    <section class="step s2">
+        <div class="step-header">
+            <div class="step-num">2</div>
+            <h2 class="step-title">Responsabilidades del Firmware</h2>
+        </div>
+        <div class="step-body">
+            <div class="resp-grid">
+                <div class="resp-card c1">
+                    <div class="func">initWiFi() / checkWiFi()</div>
+                    <p><strong style="color:var(--text)">Conexión WiFi.</strong> Se encarga de conectar el ESP32 a la red y de reconectar automáticamente si se pierde la señal.</p>
+                </div>
+                <div class="resp-card c2">
+                    <div class="func">readSensors()</div>
+                    <p><strong style="color:var(--text)">Lectura de sensores.</strong> Centraliza la lectura del DHT22 (temperatura y humedad) y del sensor de humedad del suelo, guardando los valores en variables globales.</p>
+                </div>
+                <div class="resp-card c3">
+                    <div class="func">controlActuators()</div>
+                    <p><strong style="color:var(--text)">Control de actuadores.</strong> Evalúa los datos de los sensores y decide si activar o apagar la bomba, respetando los umbrales y el tiempo máximo de riego.</p>
+                </div>
+                <div class="resp-card c4">
+                    <div class="func">sendData()</div>
+                    <p><strong style="color:var(--text)">Preparación y envío de datos.</strong> Actualiza la pantalla LCD con los valores actuales y envía los datos al puerto Serial en formato JSON.</p>
+                </div>
+                <div class="resp-card c5">
+                    <div class="func">handleCommands()</div>
+                    <p><strong style="color:var(--text)">Recepción de comandos.</strong> Atiende las peticiones HTTP del servidor web embebido y los comandos de texto recibidos por Serial.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── PASO 3 ── -->
+    <section class="step s3">
+        <div class="step-header">
+            <div class="step-num">3</div>
+            <h2 class="step-title">Estructura Inicial del Código</h2>
+        </div>
+        <div class="step-body">
+
+            <p style="color:var(--text-muted); margin-bottom:1.2rem; font-size:.9rem;">Arquitectura de llamadas en el firmware — cada bloque representa una responsabilidad separada:</p>
+
+            <div class="arch">
+                <div class="arch-box ab1">
+                    setup()<br/>
+                    <span class="ab-sub">Inicializa LCD · DHT22 · Bomba · WiFi · Servidor Web</span>
+                </div>
+                <div class="arch-arrow">↓</div>
+                <div class="arch-box ab2" style="max-width:380px;">
+                    loop() — cada 2 segundos
+                </div>
+                <div class="arch-arrow">↓</div>
+                <div style="display:flex; gap:.8rem; flex-wrap:wrap; justify-content:center; width:100%;">
+                    <div class="arch-box ab1" style="max-width:160px; font-size:.8rem;">checkWiFi()<br/><span class="ab-sub">Mantiene conexión</span></div>
+                    <div class="arch-box ab3" style="max-width:160px; font-size:.8rem;">handleCommands()<br/><span class="ab-sub">Web + Serial</span></div>
+                    <div class="arch-box ab2" style="max-width:160px; font-size:.8rem;">readSensors()<br/><span class="ab-sub">DHT22 + Suelo</span></div>
+                    <div class="arch-box ab4" style="max-width:160px; font-size:.8rem;">controlActuators()<br/><span class="ab-sub">Lógica de riego</span></div>
+                    <div class="arch-box ab5" style="max-width:160px; font-size:.8rem;">sendData()<br/><span class="ab-sub">LCD + JSON Serial</span></div>
+                </div>
+            </div>
+
+            <pre><span class="cmt">// ── sketch.ino — Estructura modular ──────────────────────────────</span>
+
+<span class="cmt">// Librerías y configuración</span>
+<span class="kw">#include</span> <span class="str">&lt;WiFi.h&gt;</span>  <span class="kw">#include</span> <span class="str">&lt;WebServer.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;DHT.h&gt;</span>   <span class="kw">#include</span> <span class="str">&lt;LiquidCrystal_I2C.h&gt;</span>
+
+<span class="cmt">// Variables globales de sensores</span>
+<span class="type">float</span> temperaturaVal, humedadAmbienteVal, humedadSueloVal;
+<span class="type">bool</span>  riegoActivo = <span class="kw">false</span>;
+
+<span class="cmt">// ── MÓDULO 1: WiFi ───────────────────────────────────────────────</span>
+<span class="type">void</span> <span class="func-name">initWiFi</span>()    { <span class="cmt">/* conectar / reportar IP */</span> }
+<span class="type">void</span> <span class="func-name">checkWiFi</span>()   { <span class="cmt">/* reconectar si cae */</span> }
+
+<span class="cmt">// ── MÓDULO 2: Sensores ───────────────────────────────────────────</span>
+<span class="type">void</span> <span class="func-name">readSensors</span>() { <span class="cmt">/* DHT22 + sensor suelo → variables globales */</span> }
+
+<span class="cmt">// ── MÓDULO 3: Actuadores ─────────────────────────────────────────</span>
+<span class="type">void</span> <span class="func-name">controlActuators</span>() { <span class="cmt">/* umbral → iniciarRiego() | detenerRiego() */</span> }
+
+<span class="cmt">// ── MÓDULO 4: Datos ──────────────────────────────────────────────</span>
+<span class="type">void</span> <span class="func-name">sendData</span>()    { <span class="cmt">/* LCD + Serial JSON */</span> }
+
+<span class="cmt">// ── MÓDULO 5: Comandos ───────────────────────────────────────────</span>
+<span class="type">void</span> <span class="func-name">handleCommands</span>() { <span class="cmt">/* server.handleClient() + Serial cmd */</span> }
+
+<span class="cmt">// ── MAIN ──────────────────────────────────────────────────────────</span>
+<span class="type">void</span> <span class="func-name">setup</span>() {
+    <span class="func-name">initWiFi</span>();  <span class="func-name">configurarServidorWeb</span>();
+}
+<span class="type">void</span> <span class="func-name">loop</span>() {
+    <span class="func-name">checkWiFi</span>();       <span class="func-name">handleCommands</span>();
+    <span class="func-name">readSensors</span>();     <span class="cmt">// Responsabilidad 1: Leer</span>
+    <span class="func-name">controlActuators</span>(); <span class="cmt">// Responsabilidad 2: Decidir</span>
+    <span class="func-name">sendData</span>();        <span class="cmt">// Responsabilidad 3: Informar</span>
+}</pre>
+        </div>
+    </section>
+
+    <!-- ── PASO 4 ── -->
+    <section class="step s4">
+        <div class="step-header">
+            <div class="step-num">4</div>
+            <h2 class="step-title">Primera Versión Funcional — Demostración</h2>
+        </div>
+        <div class="step-body">
+            <p style="margin-bottom:1rem; font-size:.9rem; color:var(--text-muted)">Resultados observados en el Monitor Serial durante la simulación en Wokwi:</p>
+            <div class="demo-box">
+                <div class="info">.....[WiFi] Conectado. IP: 10.10.0.2</div>
+                <div class="info">[Servidor] Iniciado.</div>
+                <div class="ok">Sistema Modular Listo.</div>
+                <div class="json">{"temperatura": 24.0,"humedad_ambiente": 40.0,"humedad_suelo": 95.0,"bomba": 0}</div>
+                <div class="json">{"temperatura": 24.0,"humedad_ambiente": 40.0,"humedad_suelo": 38.0,"bomba": 0}</div>
+                <div class="warn">[Actuador] Bomba ACTIVADA</div>
+                <div class="json">{"temperatura": 24.0,"humedad_ambiente": 40.0,"humedad_suelo": 9.0,"bomba": 1}</div>
+                <div class="json">{"temperatura": 24.0,"humedad_ambiente": 40.0,"humedad_suelo": 35.0,"bomba": 1}</div>
+                <div class="warn">[Actuador] Bomba DESACTIVADA</div>
+                <div class="json">{"temperatura": 24.0,"humedad_ambiente": 40.0,"humedad_suelo": 70.0,"bomba": 0}</div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:.8rem; margin-top:1.2rem;">
+                <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3);border-radius:10px;padding:.9rem 1.1rem;">
+                    <div style="color:var(--accent2);font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem;">✓ Conexión WiFi</div>
+                    <p style="font-size:.85rem;color:var(--text-muted)">ESP32 conectado y mostrando IP en Serial.</p>
+                </div>
+                <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3);border-radius:10px;padding:.9rem 1.1rem;">
+                    <div style="color:var(--accent2);font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem;">✓ Lectura de sensores</div>
+                    <p style="font-size:.85rem;color:var(--text-muted)">Temperatura 24°C, Humedad 40%, Suelo variable.</p>
+                </div>
+                <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3);border-radius:10px;padding:.9rem 1.1rem;">
+                    <div style="color:var(--accent2);font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem;">✓ Control de actuador</div>
+                    <p style="font-size:.85rem;color:var(--text-muted)">Bomba activa cuando suelo &lt; 30%, apaga al llegar a 70%.</p>
+                </div>
+                <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3);border-radius:10px;padding:.9rem 1.1rem;">
+                    <div style="color:var(--accent2);font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem;">✓ Datos en JSON</div>
+                    <p style="font-size:.85rem;color:var(--text-muted)">Cada 2 segundos se emite el estado completo del sistema.</p>
+                </div>
+                <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3);border-radius:10px;padding:.9rem 1.1rem;">
+                    <div style="color:var(--accent2);font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem;">✓ Comandos remotos</div>
+                    <p style="font-size:.85rem;color:var(--text-muted)">Bomba controlable vía web (<code>/toggle</code>) y por Serial (<code>REGAR_ON</code>).</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── PASO 5 ── -->
+    <section class="step s5">
+        <div class="step-header">
+            <div class="step-num">5</div>
+            <h2 class="step-title">Explicación de la Lógica</h2>
+        </div>
+        <div class="step-body">
+
+            <table class="func-table">
+                <thead>
+                    <tr>
+                        <th>Función</th>
+                        <th>¿Qué hace?</th>
+                        <th>¿Qué parte del proyecto representa?</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="func-tag" style="background:rgba(34,211,238,.12);color:var(--accent)">initWiFi()</span></td>
+                        <td>Intenta conectarse a la red WiFi con un tiempo límite de 10 segundos. Reporta la IP asignada o el error.</td>
+                        <td><strong>Capa de Conectividad.</strong> Sin WiFi el sistema no puede recibir comandos ni (en un futuro) publicar en la nube.</td>
+                    </tr>
+                    <tr>
+                        <td><span class="func-tag" style="background:rgba(34,211,238,.12);color:var(--accent)">checkWiFi()</span></td>
+                        <td>Se llama cada ciclo del loop; si detecta desconexión, llama a <code>initWiFi()</code> automáticamente.</td>
+                        <td><strong>Resiliencia de red.</strong> Garantiza que el sistema no quede bloqueado por una caída momentánea del WiFi.</td>
+                    </tr>
+                    <tr>
+                        <td><span class="func-tag" style="background:rgba(16,185,129,.12);color:var(--accent2)">readSensors()</span></td>
+                        <td>Lee el DHT22 (temperatura y humedad ambiental) y el sensor capacitivo de suelo. Promedia 5 lecturas analógicas para mayor precisión y guarda los valores en variables globales.</td>
+                        <td><strong>Capa de Percepción.</strong> Es la "vista" del sistema; sin datos correctos no hay decisión posible.</td>
+                    </tr>
+                    <tr>
+                        <td><span class="func-tag" style="background:rgba(245,158,11,.12);color:var(--accent3)">controlActuators()</span></td>
+                        <td>Compara la humedad del suelo con los umbrales definidos (<code>HUMEDAD_SECA = 30%</code>, <code>HUMEDAD_HUMEDA = 70%</code>). Activa la bomba cuando el suelo está seco y la apaga cuando está suficientemente húmedo o si supera el tiempo máximo de riego (10 s en simulación).</td>
+                        <td><strong>Capa de Control / Lógica de Negocio.</strong> Es el "cerebro" del sistema; toma decisiones basadas en los datos.</td>
+                    </tr>
+                    <tr>
+                        <td><span class="func-tag" style="background:rgba(139,92,246,.12);color:var(--accent4)">sendData()</span></td>
+                        <td>Actualiza la pantalla LCD de 4 líneas con temperatura, humedad ambiente, humedad del suelo y estado de la bomba. Simultáneamente envía un objeto JSON completo por el puerto Serial.</td>
+                        <td><strong>Capa de Telemetría.</strong> Prepara y expone el estado del sistema hacia el exterior (pantalla local y protocolo para nube futura).</td>
+                    </tr>
+                    <tr>
+                        <td><span class="func-tag" style="background:rgba(248,113,113,.12);color:var(--red)">handleCommands()</span></td>
+                        <td>Llama a <code>server.handleClient()</code> para atender peticiones HTTP del navegador y escucha el Serial en busca de comandos de texto (<code>REGAR_ON</code> / <code>REGAR_OFF</code>).</td>
+                        <td><strong>Capa de Interacción Remota.</strong> Permite que un usuario o sistema externo controle el actuador a distancia.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div style="margin-top:1.4rem;">
+                <h3 style="font-size:1rem;font-weight:700;margin-bottom:.8rem;color:var(--text)">¿Por qué se separó así el código?</h3>
+                <ul style="padding-left:1.4rem;font-size:.9rem;color:var(--text-muted);line-height:2;">
+                    <li><strong style="color:var(--text)">Mantenimiento:</strong> Si se cambia el sensor DHT22 por un BME280, solo se modifica <code>readSensors()</code>, sin tocar el resto.</li>
+                    <li><strong style="color:var(--text)">Debugging:</strong> Si el JSON no llega, se sabe que el problema está en <code>sendData()</code>, no en la lógica de riego.</li>
+                    <li><strong style="color:var(--text)">Escalabilidad:</strong> Agregar MQTT para publicar en la nube solo requiere añadir código dentro de <code>sendData()</code>.</li>
+                    <li><strong style="color:var(--text)">Legibilidad:</strong> El <code>loop()</code> principal se lee como una lista de acciones claras: verificar → leer → decidir → informar.</li>
+                </ul>
+            </div>
+
+            <div class="callout">
+                <div class="icon">💡</div>
+                <div>
+                    <strong>Próximos pasos del proyecto:</strong> Esta arquitectura modular facilita integrar un broker MQTT (como HiveMQ) en <code>sendData()</code>, agregar un segundo actuador en <code>controlActuators()</code> (p. ej. iluminación LED), o añadir autenticación en <code>handleCommands()</code> — todo sin reestructurar el firmware desde cero.
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+</main>
+
+<footer>
+    ISBMC · Programación en Proyectos IoT G2 · 2026 &mdash; Sistema de Riego Hidropónico Inteligente
+</footer>
+
+</body>
+</html>
