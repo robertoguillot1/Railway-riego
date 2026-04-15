@@ -33,9 +33,6 @@ if (process.env.DATABASE_URL) {
 }
 
 // ── PROXY DE CÁMARA (SNAPSHOT) ──────────────────────────────────────────
-// GET /proxy-cam?url=https://tu-pinggy-url.com
-// Actúa como puente: Railway descarga el /shot.jpg y lo entrega al navegador
-// El navegador solo habla con Railway → sin restricciones CORS ni bloqueos
 app.get('/proxy-cam', (req, res) => {
     const camBaseUrl = req.query.url;
     if (!camBaseUrl) return res.status(400).send('Falta parámetro url');
@@ -43,21 +40,32 @@ app.get('/proxy-cam', (req, res) => {
     const snapshotUrl = camBaseUrl.replace(/\/$/, '') + '/shot.jpg';
     const client = snapshotUrl.startsWith('https') ? https : http;
 
-    const proxyReq = client.get(snapshotUrl, (proxyRes) => {
-        res.setHeader('Content-Type', proxyRes.headers['content-type'] || 'image/jpeg');
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Cache-Control', 'no-store');
-        proxyRes.pipe(res);
-    });
+    const safeError = (status, msg) => {
+        if (!res.headersSent) res.status(status).send(msg);
+    };
 
-    proxyReq.on('error', (err) => {
-        console.warn('Error proxy cámara:', err.message);
-        res.status(502).send('No se pudo conectar a la cámara');
-    });
-    proxyReq.setTimeout(5000, () => {
-        proxyReq.destroy();
-        res.status(504).send('Timeout cámara');
-    });
+    try {
+        const proxyReq = client.get(snapshotUrl, { timeout: 5000 }, (proxyRes) => {
+            if (res.headersSent) return;
+            res.setHeader('Content-Type', proxyRes.headers['content-type'] || 'image/jpeg');
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Cache-Control', 'no-store');
+            proxyRes.pipe(res);
+            proxyRes.on('error', () => safeError(502, 'Stream error'));
+        });
+
+        proxyReq.on('error', (err) => {
+            console.warn('Proxy cam error:', err.message);
+            safeError(502, 'No se pudo conectar a la cámara');
+        });
+
+        proxyReq.on('timeout', () => {
+            proxyReq.destroy();
+            safeError(504, 'Timeout cámara');
+        });
+    } catch(e) {
+        safeError(500, 'Error interno proxy');
+    }
 });
 
 // ── TELEMETRÍA ──────────────────────────────────────────────────────────
