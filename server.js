@@ -1,30 +1,75 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
+const { Pool } = require('pg');
 
 const app = express();
 app.use(cors());
-app.use(express.json()); // Permite recibir JSON del ESP32
+app.use(express.json()); // Permite recibir JSON
 
 // Servir la carpeta actual (el dashboard HTML) como archivos estáticos
 app.use(express.static(path.join(__dirname)));
 
-// Este endpoint luego lo conectaremos a la base de datos de Railway
-app.post('/api/telemetria', (req, res) => {
-    console.log("==> Datos recibidos del ESP32 en la nube:", req.body);
-    
-    // Aquí más adelante haremos: database.insert(req.body);
+// Configurar conexión a la Base de Datos PostgreSQL en Railway
+let pool;
+if (process.env.DATABASE_URL) {
+    pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false } // Requerido por algunos entornos de Railway
+    });
 
-    res.json({ success: true, message: "Datos guardados en la nube temporalmente." });
+    // Inicializar tabla de historial si no existe
+    pool.query(`
+        CREATE TABLE IF NOT EXISTS historial_riego (
+            id SERIAL PRIMARY KEY,
+            temperatura DECIMAL,
+            humedad_ambiente DECIMAL,
+            humedad_suelo DECIMAL,
+            bomba_estado BOOLEAN,
+            fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    `).then(() => console.log("✅ Tabla 'historial_riego' lista."))
+      .catch(err => console.error("❌ Error creando tabla:", err));
+} else {
+    console.warn("⚠️ Advertencia: No se detectó DATABASE_URL. El historial no se guardará.");
+}
+
+// Endpoint para guardar telemetría recibida del ESP32 físicamente
+app.post('/api/telemetria', async (req, res) => {
+    console.log("==> Recibido del ESP32:", req.body);
+    
+    if (pool) {
+        try {
+            const { temperatura, humedad_ambiente, humedad_suelo, bomba } = req.body;
+            await pool.query(
+                `INSERT INTO historial_riego (temperatura, humedad_ambiente, humedad_suelo, bomba_estado) VALUES ($1, $2, $3, $4)`,
+                [temperatura, humedad_ambiente, humedad_suelo, bomba]
+            );
+            res.json({ success: true, message: "Datos guardados en PostgreSQL exitosamente." });
+        } catch (error) {
+            console.error("Error BD:", error);
+            res.status(500).json({ error: "Error al guardar en la base de datos." });
+        }
+    } else {
+        res.json({ success: false, message: "BD no configurada, pero el payload fue recibido." });
+    }
 });
 
-// Endpoint para que el Dashboard pueda leer los datos de la nube
-app.get('/api/telemetria/ultima', (req, res) => {
-    // Aquí leeremos la base de datos SQL para devolverla al Dashboard
-    res.json({ status: "Base de Datos Pendiente de conexión" });
+// Endpoint para leer la base de datos desde el Dashboard
+app.get('/api/telemetria/historial', async (req, res) => {
+    if (pool) {
+        try {
+            const result = await pool.query('SELECT * FROM historial_riego ORDER BY id DESC LIMIT 30');
+            res.json(result.rows);
+        } catch (error) {
+            res.status(500).json({ error: "No se pudo obtener el historial." });
+        }
+    } else {
+        res.json([]);
+    }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`📡 Servidor de Railway-Riego escuchando en el puerto ${PORT}`);
+    console.log(`📡 Servidor Railway-Riego activo en el puerto ${PORT}`);
 });
