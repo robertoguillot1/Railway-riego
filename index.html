@@ -807,24 +807,28 @@
                 video.style.display = 'block';
 
                 if (rawUrl) {
-                    if (camRefreshInterval) clearInterval(camRefreshInterval);
-                    // Usamos /proxy-cam en Railway para evitar bloqueos CORS
-                    const proxyBase = window.location.origin + '/proxy-cam?url=' + encodeURIComponent(rawUrl);
-                    camRefreshInterval = setInterval(() => {
-                        streamImg.src = proxyBase + '&t=' + Date.now();
-                    }, 350);
-                    addLog(`📷 CAM EN VIVO: Stream via proxy Railway → ${rawUrl}`);
+                    // Detener snapshots si estaban corriendo
+                    if (camRefreshInterval) { clearInterval(camRefreshInterval); camRefreshInterval = null; }
+
+                    // Usar el proxy MJPEG de Railway para video fluido
+                    // El img tag soporta MJPEG nativamente — una sola conexión, video continuo
+                    const proxyStreamUrl = window.location.origin + '/proxy-stream?url=' + encodeURIComponent(rawUrl);
+                    streamImg.src = proxyStreamUrl;
+                    document.getElementById('cam-fps').textContent = '🔴 MJPEG LIVE';
+                    addLog(`📷 VIDEO EN VIVO: Stream MJPEG activo → ${rawUrl}`);
                 } else {
                     streamImg.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&q=80&w=800';
-                    addLog('📷 CAM: Sin URL. Escribe la URL de Pinggy (ej: https://abc.pinggy-free.link) y pulsa EN VIVO.');
+                    addLog('📷 CAM: Escribe la URL de Pinggy (ej: https://abc.pinggy-free.link) y pulsa EN VIVO.');
                 }
             } else {
                 btn3d.classList.add('v-active');
                 btnLive.classList.remove('v-active');
                 canvas.style.display = 'block';
                 video.style.display = 'none';
-                if (camRefreshInterval) { clearInterval(camRefreshInterval); camRefreshInterval = null; }
+                // Detener el stream liberando el src
                 streamImg.src = '';
+                if (camRefreshInterval) { clearInterval(camRefreshInterval); camRefreshInterval = null; }
+                document.getElementById('cam-fps').textContent = '~ 3 FPS';
                 addLog('🎨 3D: Cambiado a vista de modelo digital.');
             }
         }

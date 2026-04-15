@@ -53,20 +53,41 @@ app.get('/proxy-cam', (req, res) => {
             proxyRes.pipe(res);
             proxyRes.on('error', () => safeError(502, 'Stream error'));
         });
-
-        proxyReq.on('error', (err) => {
-            console.warn('Proxy cam error:', err.message);
-            safeError(502, 'No se pudo conectar a la cámara');
-        });
-
-        proxyReq.on('timeout', () => {
-            proxyReq.destroy();
-            safeError(504, 'Timeout cámara');
-        });
-    } catch(e) {
-        safeError(500, 'Error interno proxy');
-    }
+        proxyReq.on('error', (err) => { console.warn('Proxy cam error:', err.message); safeError(502, 'Error conexión cámara'); });
+        proxyReq.on('timeout', () => { proxyReq.destroy(); safeError(504, 'Timeout cámara'); });
+    } catch(e) { safeError(500, 'Error interno proxy'); }
 });
+
+// ── PROXY DE VIDEO MJPEG (STREAM CONTINUO) ───────────────────────────────
+// Transmite el stream MJPEG real de IP Webcam — video fluido sin snapshots
+app.get('/proxy-stream', (req, res) => {
+    const camBaseUrl = req.query.url;
+    if (!camBaseUrl) return res.status(400).send('Falta parámetro url');
+
+    const streamUrl = camBaseUrl.replace(/\/$/, '') + '/video';
+    const client = streamUrl.startsWith('https') ? https : http;
+
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'no-store');
+
+    const proxyReq = client.get(streamUrl, { timeout: 30000 }, (proxyRes) => {
+        if (res.headersSent) return;
+        // Pasar el Content-Type del MJPEG (multipart/x-mixed-replace)
+        res.setHeader('Content-Type', proxyRes.headers['content-type'] || 'multipart/x-mixed-replace');
+        proxyRes.pipe(res);
+        proxyRes.on('error', () => { if (!res.headersSent) res.end(); });
+        proxyRes.on('end', () => res.end());
+    });
+
+    proxyReq.on('error', (err) => {
+        console.warn('MJPEG proxy error:', err.message);
+        if (!res.headersSent) res.status(502).send('No se pudo conectar al stream');
+    });
+
+    // Si el cliente (navegador) cierra la conexión, cerrar también la del celular
+    req.on('close', () => proxyReq.destroy());
+});
+
 
 // ── TELEMETRÍA ──────────────────────────────────────────────────────────
 app.post('/api/telemetria', async (req, res) => {
