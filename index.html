@@ -253,9 +253,10 @@
             <section class="canvas-container">
                 <div id="canvas3d"></div>
                 
-                <div id="live-video-container" style="display:none; width:100%; height:100%; position:absolute; top:0; left:0; overflow:hidden;">
-                    <iframe id="stream-frame" src="" style="width:100%; height:100%; border:none; object-fit:cover;" allowfullscreen></iframe>
+                <div id="live-video-container" style="display:none; width:100%; height:100%; position:absolute; top:0; left:0; overflow:hidden; background:#000;">
+                    <img id="stream-img" src="" style="width:100%; height:100%; object-fit:cover;" onerror="this.src='https://placehold.co/800x600/0d1117/22d3ee?text=Cargando+cámara...';">
                     <div style="position:absolute; top:20px; right:20px; background:rgba(239,68,68,0.3); padding:5px 12px; border-radius:5px; color:white; font-size:10px; font-weight:800; border:1px solid rgba(239,68,68,0.5);"><i class="fas fa-circle" style="font-size:8px; vertical-align:middle; margin-right:5px; animation: blink 1.5s infinite;"></i> EN VIVO</div>
+                    <div id="cam-fps" style="position:absolute; bottom:15px; right:15px; background:rgba(0,0,0,0.5); padding:3px 8px; border-radius:4px; font-size:9px; color:#22d3ee;">~ 3 FPS</div>
                 </div>
 
                 <div class="day-label" id="day-txt" onclick="skipDay()">☀️ DÍA 1 / ETAPA SEMILLA</div>
@@ -790,34 +791,44 @@
             addLog("🤖 IA: Diagnóstico completado exitosamente.");
         }
 
+        let camRefreshInterval = null;
         function setView(view) {
             const btn3d = document.querySelectorAll('.v-btn')[0];
             const btnLive = document.querySelectorAll('.v-btn')[1];
             const canvas = document.getElementById('canvas3d');
             const video = document.getElementById('live-video-container');
-            const streamFrame = document.getElementById('stream-frame');
-            const camUrl = document.getElementById('cam-url').value.trim();
+            const streamImg = document.getElementById('stream-img');
+            const rawUrl = document.getElementById('cam-url').value.trim();
+
+            // Construir URL de snapshot: reemplaza /video por /shot.jpg si aplica
+            // IP Webcam usa /shot.jpg para snapshots estáticos
+            const baseUrl = rawUrl.replace('/video', '').replace('/shot.jpg', '');
 
             if (view === 'live') {
                 btnLive.classList.add('v-active');
                 btn3d.classList.remove('v-active');
                 canvas.style.display = 'none';
                 video.style.display = 'block';
-                if (camUrl) {
-                    streamFrame.src = camUrl;
-                    addLog(`📷 CAM: Conectando a ${camUrl}`);
+
+                if (rawUrl) {
+                    if (camRefreshInterval) clearInterval(camRefreshInterval);
+                    // Refresco con snapshot cada 350ms — compatible con cualquier navegador
+                    camRefreshInterval = setInterval(() => {
+                        streamImg.src = baseUrl + '/shot.jpg?t=' + Date.now();
+                    }, 350);
+                    addLog(`📷 CAM EN VIVO: Conectando a ${baseUrl}/shot.jpg`);
                 } else {
-                    // Preview con foto si no hay URL
-                    streamFrame.src = "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&q=80&w=800";
-                    addLog("📷 CAM: Sin URL configurada. Mostrando preview. Escribe la URL de tu cámara en el campo y vuelve a seleccionar EN VIVO.");
+                    streamImg.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&q=80&w=800';
+                    addLog('📷 CAM: Sin URL. Escribe la URL base de IP Webcam (ej: https://abc.pinggy-free.link) y pulsa EN VIVO.');
                 }
             } else {
                 btn3d.classList.add('v-active');
                 btnLive.classList.remove('v-active');
                 canvas.style.display = 'block';
                 video.style.display = 'none';
-                streamFrame.src = ""; // Liberar el stream
-                addLog("🎨 3D: Cambiado a vista de modelo digital.");
+                if (camRefreshInterval) { clearInterval(camRefreshInterval); camRefreshInterval = null; }
+                streamImg.src = '';
+                addLog('🎨 3D: Cambiado a vista de modelo digital.');
             }
         }
 
