@@ -158,9 +158,9 @@
             Dashboard de Riego IoT <span style="color:var(--text-dim); font-weight:400; font-size:14px; margin-left:10px;">/ Riohacha-P1</span>
         </div>
         <div class="header-status">
-            <div class="status-pill"><div style="width:8px; height:8px; background:var(--primary); border-radius:50%; box-shadow:0 0 10px var(--primary);"></div> ESP32 ACTIVE</div>
-            <div class="status-pill" style="border-color:var(--glass-border); color:var(--text-dim);"><i class="fas fa-wifi"></i> 94% SIGNAL</div>
-            <div class="status-pill" style="border-color:var(--glass-border); color:var(--text-dim);"><i class="far fa-clock"></i> <span id="clock">14:23 PM</span></div>
+            <div class="status-pill" id="esp-status-pill"><div id="status-dot" style="width:8px; height:8px; background:var(--primary); border-radius:50%; box-shadow:0 0 10px var(--primary);"></div> <span id="esp-status-text">ESP32 ACTIVE</span></div>
+            <div class="status-pill" id="signal-pill" style="border-color:var(--glass-border); color:var(--text-dim);"><i class="fas fa-wifi"></i> <span id="signal-text">94% SIGNAL</span></div>
+            <div class="status-pill" style="border-color:var(--glass-border); color:var(--text-dim);"><i class="far fa-clock"></i> <span id="clock">--:-- --</span></div>
             <a href="entrega_firmware_modular.html" style="text-decoration:none;">
                 <div class="status-pill" style="background:rgba(139,92,246,0.2); border-color:rgba(139,92,246,0.6); color:#c4b5fd; cursor:pointer; transition:0.3s; box-shadow: 0 0 12px rgba(139,92,246,0.3);" onmouseover="this.style.background='rgba(139,92,246,0.35)'; this.style.boxShadow='0 0 20px rgba(139,92,246,0.5)'" onmouseout="this.style.background='rgba(139,92,246,0.2)'; this.style.boxShadow='0 0 12px rgba(139,92,246,0.3)'">
                     <i class="fas fa-file-code"></i> ENTREGA FIRMWARE
@@ -412,50 +412,61 @@
             options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 30, max: 100, grid:{color:'rgba(255,255,255,0.05)'} } } }
         });
 
+        // Actualizar reloj cada segundo
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+            document.getElementById('clock').textContent = timeStr;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
         async function updateSim() {
+            // Lógica de crecimiento (Días) - Funciona siempre para que la planta visual crezca
             state.dayTime += 0.15;
             if(state.dayTime >= 100) {
-                state.dayTime = 0; state.day = state.day >= 7 ? 1 : state.day + 1;
+                state.dayTime = 0; 
+                state.day = state.day >= 7 ? 1 : state.day + 1;
                 document.getElementById('day-txt').textContent = `☀️ DÍA ${state.day} / ETAPA ${["SEMILLA","BROTE","CRECIMIENTO","ESTABLE","PRE-FLOR","FLOR","MADUREZ"][state.day-1]}`;
             }
 
             if (window.isRealMode) {
-                // En modo real los datos se actualizan por el polling de fetchRailwayData cada x segundos.
-                // Aquí solo mantenemos la gráfica en movimiento si se desea, o la dejamos estática hasta el próximo fetch.
+                // Los datos se actualizan via fetchRailwayData() cada 5s
             } else if (window.isDemoMode === false) {
-                // MODO REAL, pero sin conexión: Mostrar TODO en cero
-                state.soil = 0;
-                state.temp = 0;
-                state.hum = 0;
+                // Modo "Real" seleccionado pero no vinculado aún
+                document.getElementById('esp-status-text').textContent = "ESP32 DISCONNECTED";
+                document.getElementById('status-dot').style.background = "#ef4444";
+                document.getElementById('status-dot').style.boxShadow = "0 0 10px #ef4444";
+                document.getElementById('signal-text').textContent = "0% SIGNAL";
+                state.soil = 0; state.temp = 0; state.hum = 0;
             } else {
-                // MODO DEMO: Simulación dinámica de sensores
+                // MODO DEMO: Simulación activa
+                document.getElementById('esp-status-text').textContent = "SIMULATOR ACTIVE";
+                document.getElementById('status-dot').style.background = "var(--primary)";
+                document.getElementById('status-dot').style.boxShadow = "0 0 10px var(--primary)";
+                document.getElementById('signal-text').textContent = "LOCAL LINK";
+
                 if(state.pump) {
-                    state.soil += 0.45;
-                    state.temp -= 0.02; // El riego enfría ligeramente
-                    state.hum += 0.05;  // Sube la humedad relativa
+                    state.soil += 0.45; state.temp -= 0.02; state.hum += 0.05;  
                 } else {
                     state.soil -= 0.12;
-                    state.temp += (Math.random() - 0.48) * 0.15; // Fluctuación natural
-                    state.hum += (Math.random() - 0.5) * 0.4;     // Fluctuación natural
+                    state.temp += (Math.random() - 0.48) * 0.15; 
+                    state.hum += (Math.random() - 0.5) * 0.4;     
                 }
 
-                // LÓGICA DE CONTROL AUTÓNOMO EN SIMULADOR
+                // Lógica de control automático local (Simulador)
                 if(state.mode === 'AUTO') {
                     const uRiego = parseInt(document.getElementById('u-r-slider').value);
                     const uParo = parseInt(document.getElementById('u-p-slider').value);
-
-                    if(state.soil <= uRiego && !state.pump) {
-                        togglePump(true, "AUTO");
-                    } else if(state.soil >= uParo && state.pump) {
-                        togglePump(false, "AUTO");
-                    }
+                    if(state.soil <= uRiego && !state.pump) togglePump(true, "AUTO");
+                    else if(state.soil >= uParo && state.pump) togglePump(false, "AUTO");
                 }
             }
 
-            // Límites visuales (saltar si estamos en ceros intencionados)
+            // Límites visuales
             if (window.isDemoMode !== false || window.isRealMode) {
                 state.soil = Math.min(Math.max(state.soil, 0), 100);
-                state.temp = Math.min(Math.max(state.temp, 0), 45); // permitimos bajar a 0
+                state.temp = Math.min(Math.max(state.temp, 0), 45);
                 state.hum = Math.min(Math.max(state.hum, 0), 100);
             }
             
@@ -579,6 +590,13 @@
                     window.isRealMode = true;
                     document.getElementById('ip-status').textContent = "NUBE CONECTADA";
                     document.getElementById('ip-status').style.color = "var(--primary)";
+                    
+                    // Actualizar Header
+                    document.getElementById('esp-status-text').textContent = "ESP32 ONLINE (REMOTE)";
+                    document.getElementById('status-dot').style.background = "var(--primary)";
+                    document.getElementById('status-dot').style.boxShadow = "0 0 10px var(--primary)";
+                    document.getElementById('signal-text').textContent = (90 + Math.floor(Math.random()*8)) + "% SIGNAL";
+
                     addLog(`✅ ÉXITO: Dashboard sincronizado con la BD. Obteniendo telemetría en vivo...`);
                     
                     // Iniciar polling
