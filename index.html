@@ -253,8 +253,8 @@
             <section class="canvas-container">
                 <div id="canvas3d"></div>
                 
-                <div id="live-video-container" style="display:none; width:100%; height:100%; position:relative; overflow:hidden;">
-                    <img id="stream-img" src="" style="width:100%; height:100%; object-fit:cover; filter: contrast(1.1) saturate(1.1);">
+                <div id="live-video-container" style="display:none; width:100%; height:100%; position:absolute; top:0; left:0; overflow:hidden;">
+                    <iframe id="stream-frame" src="" style="width:100%; height:100%; border:none; object-fit:cover;" allowfullscreen></iframe>
                     <div style="position:absolute; top:20px; right:20px; background:rgba(239,68,68,0.3); padding:5px 12px; border-radius:5px; color:white; font-size:10px; font-weight:800; border:1px solid rgba(239,68,68,0.5);"><i class="fas fa-circle" style="font-size:8px; vertical-align:middle; margin-right:5px; animation: blink 1.5s infinite;"></i> EN VIVO</div>
                 </div>
 
@@ -795,22 +795,28 @@
             const btnLive = document.querySelectorAll('.v-btn')[1];
             const canvas = document.getElementById('canvas3d');
             const video = document.getElementById('live-video-container');
-            const streamImg = document.getElementById('stream-img');
-            const camUrl = document.getElementById('cam-url').value;
+            const streamFrame = document.getElementById('stream-frame');
+            const camUrl = document.getElementById('cam-url').value.trim();
 
             if (view === 'live') {
                 btnLive.classList.add('v-active');
                 btn3d.classList.remove('v-active');
                 canvas.style.display = 'none';
                 video.style.display = 'block';
-                streamImg.src = camUrl || "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&q=80&w=800"; 
-                addLog("📷 CAM: Cambiado a vista de cámara en tiempo real.");
+                if (camUrl) {
+                    streamFrame.src = camUrl;
+                    addLog(`📷 CAM: Conectando a ${camUrl}`);
+                } else {
+                    // Preview con foto si no hay URL
+                    streamFrame.src = "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&q=80&w=800";
+                    addLog("📷 CAM: Sin URL configurada. Mostrando preview. Escribe la URL de tu cámara en el campo y vuelve a seleccionar EN VIVO.");
+                }
             } else {
                 btn3d.classList.add('v-active');
                 btnLive.classList.remove('v-active');
                 canvas.style.display = 'block';
                 video.style.display = 'none';
-                streamImg.src = "";
+                streamFrame.src = ""; // Liberar el stream
                 addLog("🎨 3D: Cambiado a vista de modelo digital.");
             }
         }
