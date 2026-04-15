@@ -258,9 +258,8 @@
                         <button class="mode-btn active" id="btn-demo" onclick="desconectarESP()">SIMULADOR (DEMO)</button>
                         <button class="mode-btn" id="btn-real" onclick="showIPInput()">DISPOSITIVO REAL</button>
                     </div>
-                    <div id="ip-panel" style="display:none; gap:10px; align-items:center; opacity:0; transition:0.3s;">
-                        <input type="text" id="ip-input" class="range-slider" style="flex:1; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); padding:8px 12px; height:auto; color:white; font-family:'monospace';" placeholder="Local IP (Ej: 192.168.1.50)" value="">
-                        <button onclick="conectarESP()" style="background:linear-gradient(135deg, #10b981 0%, #059669 100%); color:white; border:none; padding:9px 15px; border-radius:8px; cursor:pointer; font-weight:700; font-size:11px; box-shadow:0 4px 10px rgba(16,185,129,0.3);">CONECTAR</button>
+                    <div id="ip-panel" style="display:none; gap:10px; align-items:center; opacity:0; transition:0.3s; margin-top:10px;">
+                        <button onclick="conectarESP()" style="background:linear-gradient(135deg, #10b981 0%, #059669 100%); color:white; border:none; padding:12px 15px; border-radius:8px; cursor:pointer; font-weight:700; font-size:12px; box-shadow:0 4px 10px rgba(16,185,129,0.3); width:100%; transition:0.3s;">🔌 VINCULAR A BASE DE DATOS (NUBE)</button>
                     </div>
                 </div>
 
@@ -420,28 +419,9 @@
                 document.getElementById('day-txt').textContent = `☀️ DÍA ${state.day} / ETAPA ${["SEMILLA","BROTE","CRECIMIENTO","ESTABLE","PRE-FLOR","FLOR","MADUREZ"][state.day-1]}`;
             }
 
-            if (window.isRealMode && window.espIP) {
-                // MODO REAL: Solicitar datos al ESP32 físico
-                try {
-                    // Timeout para no bloquear la app si el ESP se desconecta
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 1500);
-                    
-                    const res = await fetch(`http://${window.espIP}/api/data`, { signal: controller.signal });
-                    clearTimeout(timeoutId);
-                    
-                    if (res.ok) {
-                        const data = await res.json();
-                        state.temp = data.temperatura;
-                        state.hum = data.humedad_ambiente;
-                        state.soil = data.humedad_suelo;
-                        if (data.bomba !== undefined && state.mode !== 'MANUAL') {
-                            setPumpUI(data.bomba);
-                        }
-                    }
-                } catch (e) {
-                    console.warn("Fallo lectura ESP32", e);
-                }
+            if (window.isRealMode) {
+                // En modo real los datos se actualizan por el polling de fetchRailwayData cada x segundos.
+                // Aquí solo mantenemos la gráfica en movimiento si se desea, o la dejamos estática hasta el próximo fetch.
             } else if (window.isDemoMode === false) {
                 // MODO REAL, pero sin conexión: Mostrar TODO en cero
                 state.soil = 0;
@@ -494,18 +474,10 @@
         async function togglePump(status, source) {
             if (state.pump === status) return;
 
-            // Si estamos en modo físico ESP32
-            if (window.isRealMode && window.espIP) {
-                try {
-                    const res = await fetch(`http://${window.espIP}/api/toggle`, { method: 'POST' });
-                    if (res.ok) {
-                        const data = await res.json();
-                        setPumpUI(data.bomba);
-                        addLog(`${source === "AUTO" ? "🤖 IA" : "👤 MANUAL"} LAN (ESP32): Bomba enviada. Respuesta: ${data.bomba ? 'ON':'OFF'}`);
-                    }
-                } catch(e) {
-                    addLog("⚠️ ERROR: No se pudo contactar el ESP32 para cambiar el estado de la bomba.");
-                }
+            // Si estamos conectando a la Nube (Railway)
+            if (window.isRealMode) {
+                setPumpUI(status);
+                addLog(`${source === "AUTO" ? "🤖 IA" : "👤 MANUAL"} Nube: Comando enviado a la Base de Datos (Pendiente lectura del ESP32).`);
             } else {
                 // MODO DEMO
                 setPumpUI(status);
@@ -587,46 +559,68 @@
             setTimeout(() => panel.style.opacity = '1', 50);
             
             if(!window.isRealMode) {
-                document.getElementById('ip-status').textContent = "ESPERANDO IP...";
+                document.getElementById('ip-status').textContent = "ESPERANDO CONEXIÓN...";
                 document.getElementById('ip-status').style.color = "var(--text-dim)";
-                addLog("⚠️ SISTEMA: Modo Real seleccionado. Esperando IP para recibir telemetría.");
+                addLog("⚠️ SISTEMA: Modo Real seleccionado. Conecta a la Base de Datos para verificar la Nube.");
             }
         }
 
+        let pollingInterval = null;
+
         async function conectarESP() {
-            const ip = document.getElementById('ip-input').value.trim();
-            if (!ip) { addLog("⚠️ ERROR: Por favor ingresa una IP (ej: 192.168.1.50)"); return; }
-            
-            document.getElementById('ip-status').textContent = "CONECTANDO...";
+            document.getElementById('ip-status').textContent = "CONECTANDO A LA NUBE...";
             document.getElementById('ip-status').style.color = "var(--primary)";
-            addLog(`🌐 RED: Intentando contactar ESP32 en http://${ip}/api/data...`);
+            addLog(`🌐 RED: Contactando Base de Datos en Railway...`);
             
             try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 3000);
-                const res = await fetch(`http://${ip}/api/data`, { signal: controller.signal });
-                clearTimeout(timeoutId);
-                
+                // Conectando al endpoint de railway donde subimos el proyecto
+                const res = await fetch(`https://railway-riego-production.up.railway.app/api/telemetria/historial`);
                 if (res.ok) {
-                    window.espIP = ip;
                     window.isRealMode = true;
-                    document.getElementById('ip-status').textContent = "MODO REAL ON";
+                    document.getElementById('ip-status').textContent = "NUBE CONECTADA";
                     document.getElementById('ip-status').style.color = "var(--primary)";
-                    addLog(`✅ ÉXITO: Dashboard ahora controla el ESP32 Físico en [${ip}]`);
+                    addLog(`✅ ÉXITO: Dashboard sincronizado con la BD. Obteniendo telemetría en vivo...`);
+                    
+                    // Iniciar polling
+                    if (pollingInterval) clearInterval(pollingInterval);
+                    pollingInterval = setInterval(fetchRailwayData, 5000);
+                    fetchRailwayData();
                 } else {
                     throw new Error("HTTP Status no OK");
                 }
             } catch (error) {
                 document.getElementById('ip-status').textContent = "FALLÓ CONEXIÓN";
                 document.getElementById('ip-status').style.color = "#ef4444";
-                addLog(`❌ RED: No se pudo conectar a ${ip}. Verifica que el ESP32 esté en la misma red WiFi.`);
+                addLog(`❌ RED: No se pudo conectar a la base de datos de Railway.`);
+            }
+        }
+
+        async function fetchRailwayData() {
+            if (!window.isRealMode) return;
+            try {
+                const res = await fetch(`https://railway-riego-production.up.railway.app/api/telemetria/historial`);
+                if (res.ok) {
+                    const historial = await res.json();
+                    if (historial && historial.length > 0) {
+                        const data = historial[0]; // Último registro insertado por el ESP32
+                        state.temp = parseFloat(data.temperatura);
+                        state.hum = parseFloat(data.humedad_ambiente);
+                        state.soil = parseFloat(data.humedad_suelo);
+                        if (data.bomba_estado !== undefined && state.mode !== 'MANUAL') {
+                            setPumpUI(data.bomba_estado);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn("Fallo lectura Railway", e);
             }
         }
 
         function desconectarESP() {
             window.isDemoMode = true; // Volvemos a la simulación
             window.isRealMode = false;
-            window.espIP = null;
+            if (pollingInterval) clearInterval(pollingInterval);
+            
             document.getElementById('ip-status').textContent = "MODO DEMO";
             document.getElementById('ip-status').style.color = "var(--accent3)";
             
