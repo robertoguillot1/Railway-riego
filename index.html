@@ -126,7 +126,7 @@
             .top-grid { grid-template-columns: 300px 1fr; }
             .bottom-grid { grid-template-columns: 1fr; height: auto; }
             .terminal { height: 220px; }
-            .glass-panel:nth-child(3) { grid-column: span 2; } /* Mueve el control maestro abajo en tablet */
+            .glass-panel:nth-child(3) { grid-column: span 2; }
         }
         
         @media (max-width: 900px) {
@@ -137,16 +137,32 @@
         }
 
         @media (max-width: 768px) {
-            .content-area { margin-left: 0; padding: 15px; padding-bottom: 100px; gap: 15px; }
+            .header { padding: 0 15px; height: 60px; }
+            .header-title { font-size: 1rem; }
+            .status-pill { padding: 5px 10px; font-size: 10px; }
+            
+            .content-area { margin-left: 0; padding: 12px; padding-bottom: 90px; gap: 12px; }
             .sidebar {
-                top: auto; bottom: 0; left: 0; right: 0; width: 100%; height: 70px;
-                flex-direction: row; justify-content: space-around; padding: 0 15px; border-right: none; border-top: 1px solid var(--glass-border); padding-top: 0; align-items: center; background: rgba(20, 27, 39, 0.95); backdrop-filter: blur(15px);
+                top: auto; bottom: 0; left: 0; right: 0; width: 100%; height: 65px;
+                flex-direction: row; justify-content: space-around; padding: 0 10px; border-right: none; border-top: 1px solid var(--glass-border); padding-top: 0; align-items: center; background: rgba(20, 27, 39, 0.98); backdrop-filter: blur(20px);
             }
-            .nav-item { margin-bottom: 0 !important; margin-top: 0 !important; width: auto; flex: 1; border-radius: 10px; height: 50px; }
-            .top-grid, .bottom-grid { gap: 15px; }
-            .glass-panel { padding: 20px; }
-            .header-title { font-size: 1.1rem; }
+            .nav-item { margin-bottom: 0 !important; margin-top: 0 !important; width: 50px; height: 45px; border-radius: 12px; font-size: 18px; }
+            .top-grid, .bottom-grid { gap: 12px; }
+            .glass-panel { padding: 18px; }
+            .panel-header { font-size: 0.85rem; margin-bottom: 18px; }
+            .ring-container { width: 120px; height: 120px; margin-bottom: 15px; }
+            .stat-val { font-size: 26px; }
+            .mini-card { padding: 10px 14px; gap: 12px; }
+            .mini-card i { width: 34px; height: 34px; font-size: 16px; }
+            .big-action-btn { padding: 15px; font-size: 14px; }
+        }
+
+        @media (max-width: 480px) {
             .header-title span { display: none; }
+            .header-status .status-pill:nth-child(1) { order: 2; }
+            .header-status .status-pill:last-child { order: 1; }
+            .top-grid { grid-template-columns: 1fr; }
+            .canvas-container { height: 300px; }
         }
     </style>
 </head>
@@ -621,11 +637,35 @@
                     const historial = await res.json();
                     if (historial && historial.length > 0) {
                         const data = historial[0]; // Último registro insertado por el ESP32
-                        state.temp = parseFloat(data.temperatura);
-                        state.hum = parseFloat(data.humedad_ambiente);
-                        state.soil = parseFloat(data.humedad_suelo);
-                        if (data.bomba_estado !== undefined && state.mode !== 'MANUAL') {
-                            setPumpUI(data.bomba_estado);
+                        
+                        // CHEQUEO DE INACTIVIDAD (HEARTBEAT)
+                        const lastSeen = new Date(data.fecha).getTime();
+                        const now = new Date().getTime();
+                        const diffSeconds = (now - lastSeen) / 1000;
+
+                        if (diffSeconds > 65) { 
+                            // Más de 1 minuto sin reportar -> ESP32 OFFLINE
+                            document.getElementById('esp-status-text').textContent = "ESP32 OFFLINE (TIMEOUT)";
+                            document.getElementById('status-dot').style.background = "#94a3b8"; 
+                            document.getElementById('status-dot').style.boxShadow = "none";
+                            document.getElementById('signal-text').textContent = "0% SIGNAL";
+                            
+                            // Opcional: poner sensores en 0 para indicar pérdida de datos
+                            state.temp = 0; state.hum = 0; state.soil = 0;
+                            if (window.isRealMode) addLog("⚠️ ALERTA: Sin señal del ESP32 por más de 1 minuto. Verificando conexión...");
+                        } else {
+                            // EN LÍNEA
+                            document.getElementById('esp-status-text').textContent = "ESP32 ONLINE (REMOTE)";
+                            document.getElementById('status-dot').style.background = "var(--primary)";
+                            document.getElementById('status-dot').style.boxShadow = "0 0 10px var(--primary)";
+                            document.getElementById('signal-text').textContent = (90 + Math.floor(Math.random()*8)) + "% SIGNAL";
+                            
+                            state.temp = parseFloat(data.temperatura);
+                            state.hum = parseFloat(data.humedad_ambiente);
+                            state.soil = parseFloat(data.humedad_suelo);
+                            if (data.bomba_estado !== undefined && state.mode !== 'MANUAL') {
+                                setPumpUI(data.bomba_estado);
+                            }
                         }
                     }
                 }

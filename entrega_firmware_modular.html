@@ -305,6 +305,49 @@
             color: var(--text-muted);
             font-size: .82rem;
         }
+        /* ── MOBILE ADAPTATION ── */
+        @media (max-width: 768px) {
+            header { padding: 3.5rem 1.2rem 2rem; }
+            header h1 { font-size: 1.8rem; line-height: 1.2; }
+            .meta-row { gap: 1rem; flex-direction: column; align-items: center; }
+            
+            main { padding: 1.5rem 1rem 4rem; }
+            .step-header { padding: 1rem; gap: 0.8rem; }
+            .step-num { width: 32px; height: 32px; font-size: 0.9rem; }
+            .step-title { font-size: 1rem; }
+            .step-body { padding: 1.2rem; }
+
+            /* Tablas responsivas */
+            .step-body { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            table, .func-table { min-width: 500px; }
+            th, td { padding: 0.6rem 0.8rem; font-size: 0.82rem; }
+
+            .resp-grid { grid-template-columns: 1fr; }
+            .arch-box { max-width: 100%; font-size: 0.82rem; }
+            
+            pre { padding: 1rem; font-size: 0.72rem; }
+            .demo-box { padding: 0.8rem 1rem; font-size: 0.75rem; }
+
+            .back-btn {
+                position: absolute;
+                top: 0.8rem;
+                left: 50%;
+                transform: translateX(-50%);
+                width: calc(100% - 2rem);
+                justify-content: center;
+                background: rgba(16,185,129,0.15);
+                backdrop-filter: blur(10px);
+            }
+            .back-btn:hover { transform: translateX(-50%) translateY(-2px); }
+        }
+
+        @media (max-width: 480px) {
+            header h1 { font-size: 1.5rem; }
+            .badge { font-size: 0.7rem; padding: 0.25rem 0.8rem; }
+            .meta-item { font-size: 0.75rem; }
+            .step-header { flex-direction: column; align-items: flex-start; }
+            .step-num { margin-bottom: 5px; }
+        }
     </style>
 </head>
 <body>
