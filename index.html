@@ -798,11 +798,7 @@
             const canvas = document.getElementById('canvas3d');
             const video = document.getElementById('live-video-container');
             const streamImg = document.getElementById('stream-img');
-            const rawUrl = document.getElementById('cam-url').value.trim();
-
-            // Construir URL de snapshot: reemplaza /video por /shot.jpg si aplica
-            // IP Webcam usa /shot.jpg para snapshots estáticos
-            const baseUrl = rawUrl.replace('/video', '').replace('/shot.jpg', '');
+            const rawUrl = document.getElementById('cam-url').value.trim().replace(/\/$/, '');
 
             if (view === 'live') {
                 btnLive.classList.add('v-active');
@@ -812,14 +808,15 @@
 
                 if (rawUrl) {
                     if (camRefreshInterval) clearInterval(camRefreshInterval);
-                    // Refresco con snapshot cada 350ms — compatible con cualquier navegador
+                    // Usamos /proxy-cam en Railway para evitar bloqueos CORS
+                    const proxyBase = window.location.origin + '/proxy-cam?url=' + encodeURIComponent(rawUrl);
                     camRefreshInterval = setInterval(() => {
-                        streamImg.src = baseUrl + '/shot.jpg?t=' + Date.now();
+                        streamImg.src = proxyBase + '&t=' + Date.now();
                     }, 350);
-                    addLog(`📷 CAM EN VIVO: Conectando a ${baseUrl}/shot.jpg`);
+                    addLog(`📷 CAM EN VIVO: Stream via proxy Railway → ${rawUrl}`);
                 } else {
                     streamImg.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&q=80&w=800';
-                    addLog('📷 CAM: Sin URL. Escribe la URL base de IP Webcam (ej: https://abc.pinggy-free.link) y pulsa EN VIVO.');
+                    addLog('📷 CAM: Sin URL. Escribe la URL de Pinggy (ej: https://abc.pinggy-free.link) y pulsa EN VIVO.');
                 }
             } else {
                 btn3d.classList.add('v-active');
