@@ -164,6 +164,22 @@
             .top-grid { grid-template-columns: 1fr; }
             .canvas-container { height: 300px; }
         }
+
+        .view-selector {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            display: flex; background: rgba(0,0,0,0.4); backdrop-filter: blur(10px);
+            border-radius: 12px; border: 1px solid var(--glass-border); padding: 5px; gap: 5px; z-index: 100;
+        }
+        .v-btn {
+            border: none; background: transparent; color: white; padding: 6px 14px;
+            border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; transition: 0.3s;
+        }
+        .v-active { background: var(--primary); color: #0f1520; }
+        
+        @keyframes blink { 
+            0%, 100% { opacity: 1; } 
+            50% { opacity: 0.3; } 
+        }
     </style>
 </head>
 <body>
@@ -233,12 +249,24 @@
                 </div>
             </section>
 
-            <!-- 3D CENTRAL -->
+            <!-- 3D CENTRAL / VIDEO -->
             <section class="canvas-container">
                 <div id="canvas3d"></div>
+                
+                <div id="live-video-container" style="display:none; width:100%; height:100%; position:relative; overflow:hidden;">
+                    <img id="stream-img" src="" style="width:100%; height:100%; object-fit:cover; filter: contrast(1.1) saturate(1.1);">
+                    <div style="position:absolute; top:20px; right:20px; background:rgba(239,68,68,0.3); padding:5px 12px; border-radius:5px; color:white; font-size:10px; font-weight:800; border:1px solid rgba(239,68,68,0.5);"><i class="fas fa-circle" style="font-size:8px; vertical-align:middle; margin-right:5px; animation: blink 1.5s infinite;"></i> EN VIVO</div>
+                </div>
+
                 <div class="day-label" id="day-txt" onclick="skipDay()">☀️ DÍA 1 / ETAPA SEMILLA</div>
+                
+                <div class="view-selector">
+                    <button class="v-btn v-active" onclick="setView('3d')"><i class="fas fa-cube"></i> 3D</button>
+                    <button class="v-btn" onclick="setView('live')"><i class="fas fa-video"></i> EN VIVO</button>
+                </div>
+
                 <div style="position:absolute; bottom:20px; left:20px; font-size:10px; color:var(--text-dim); display:flex; gap:15px; opacity:0.6;">
-                    <span><i class="fas fa-video"></i> 1080p LIVE STREAM</span>
+                    <span><i class="fas fa-broadcast-tower"></i> ENLACE CIFRADO</span>
                     <span>SECURE_CONN_HASH: 0x82...f4a</span>
                 </div>
             </section>
@@ -274,8 +302,9 @@
                         <button class="mode-btn active" id="btn-demo" onclick="desconectarESP()">SIMULADOR (DEMO)</button>
                         <button class="mode-btn" id="btn-real" onclick="showIPInput()">DISPOSITIVO REAL</button>
                     </div>
-                    <div id="ip-panel" style="display:none; gap:10px; align-items:center; opacity:0; transition:0.3s; margin-top:10px;">
-                        <button onclick="conectarESP()" style="background:linear-gradient(135deg, #10b981 0%, #059669 100%); color:white; border:none; padding:12px 15px; border-radius:8px; cursor:pointer; font-weight:700; font-size:12px; box-shadow:0 4px 10px rgba(16,185,129,0.3); width:100%; transition:0.3s;">🔌 VINCULAR A BASE DE DATOS (NUBE)</button>
+                    <div id="ip-panel" style="display:none; flex-direction:column; gap:10px; opacity:0; transition:0.3s; margin-top:10px;">
+                        <input type="text" id="cam-url" class="range-slider" style="background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); padding:10px; font-size:11px; color:white;" placeholder="URL Cámara (Ej: http://192.168.1.15:8080/video)">
+                        <button onclick="conectarESP()" style="background:linear-gradient(135deg, #10b981 0%, #059669 100%); color:white; border:none; padding:12px 15px; border-radius:8px; cursor:pointer; font-weight:700; font-size:12px; box-shadow:0 4px 10px rgba(16,185,129,0.3); width:100%; transition:0.3s;">🔌 VINCULAR A LA NUBE / CONFIGURAR</button>
                     </div>
                 </div>
 
@@ -759,6 +788,31 @@
             if (icon) icon.style.animation = "none";
             typeWriter(txt, diagnostico);
             addLog("🤖 IA: Diagnóstico completado exitosamente.");
+        }
+
+        function setView(view) {
+            const btn3d = document.querySelectorAll('.v-btn')[0];
+            const btnLive = document.querySelectorAll('.v-btn')[1];
+            const canvas = document.getElementById('canvas3d');
+            const video = document.getElementById('live-video-container');
+            const streamImg = document.getElementById('stream-img');
+            const camUrl = document.getElementById('cam-url').value;
+
+            if (view === 'live') {
+                btnLive.classList.add('v-active');
+                btn3d.classList.remove('v-active');
+                canvas.style.display = 'none';
+                video.style.display = 'block';
+                streamImg.src = camUrl || "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&q=80&w=800"; 
+                addLog("📷 CAM: Cambiado a vista de cámara en tiempo real.");
+            } else {
+                btn3d.classList.add('v-active');
+                btnLive.classList.remove('v-active');
+                canvas.style.display = 'block';
+                video.style.display = 'none';
+                streamImg.src = "";
+                addLog("🎨 3D: Cambiado a vista de modelo digital.");
+            }
         }
 
         window.onload = () => { init3D(); setInterval(updateSim, 100); };
